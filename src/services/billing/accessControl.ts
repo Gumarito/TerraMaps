@@ -23,6 +23,7 @@ export function hasFeature(feature: PremiumFeature): boolean {
 export function getThemeLockReason(themeId: string): LockReason {
   const theme = MAP_THEMES[themeId];
   if (!theme || theme.access === 'free') return null;
+  if (__DEV__) return null; // En desarrollo todas las skins se pueden probar sin restricciones.
   if (hasFeature('premium_skins') || adService.getAreThemesUnlockedByAd()) return null;
   if (theme.access === 'progress') return monetizationService.isSkinUnlocked(themeId) ? null : 'progress';
   return 'pro';

@@ -48,7 +48,14 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.scrollList}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            bounces
+          >
             <View style={styles.themesContainer}>
               {themes.map((theme: MapTheme) => {
                 const isSelected = theme.id === currentThemeId;
@@ -175,7 +182,11 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
   },
   scrollList: {
-    maxHeight: 460,
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingBottom: 8,
   },
   header: {
     flexDirection: 'row',

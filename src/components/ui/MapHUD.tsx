@@ -4,6 +4,7 @@ import { MapTheme, FogVisualMode, FOG_STYLE_PRESETS } from '@/core/theme/mapThem
 import { TransportState } from '@/services/transportClassifier';
 import { RegionalExplorationStats } from '@/services/regionalMetrics';
 import { TimelineCartelBanner } from './TimelineCartelBanner';
+import { colors, fontSize, size, space } from '@/theme/tokens';
 
 export interface MapHUDProps {
   theme: MapTheme;
@@ -82,32 +83,15 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
           </View>
 
           {streakDays > 0 && (
-            <View
-              style={[
-                styles.streakCapsule,
-                {
-                  backgroundColor: isTodayActive
-                    ? 'rgba(249, 115, 22, 0.15)'
-                    : theme.hudBackground,
-                  borderColor: isTodayActive ? '#f97316' : theme.borderColor,
-                },
-              ]}
-            >
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: isTodayActive ? '#f97316' : '#94a3b8',
-                }}
-              />
+            <View style={styles.streakCapsule} accessibilityLabel={`Racha de ${streakDays} días`}>
+              <Text style={[styles.streakEmoji, !isTodayActive && { opacity: 0.5 }]}>🔥</Text>
               <Text
                 style={[
                   styles.streakText,
-                  { color: isTodayActive ? '#f97316' : theme.textColor },
+                  { color: isTodayActive ? colors.ember : theme.textColor },
                 ]}
               >
-                {streakDays}D RACHA
+                {streakDays}
               </Text>
             </View>
           )}
@@ -183,7 +167,16 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
             onPress={onOpenShare}
             activeOpacity={0.85}
           >
-            <Text style={[styles.activityValue, { color: theme.accentColor }]}>
+            <Text style={[styles.activityValue, { color: theme.textColor }]}>
+              {regionalStats.dailyDistanceKm.toFixed(2)} km
+            </Text>
+            <View
+              style={[
+                styles.pillDivider,
+                { backgroundColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)' },
+              ]}
+            />
+            <Text style={[styles.activitySub, { color: theme.accentColor }]}>
               {regionalStats.estimatedSteps.toLocaleString()} pasos
             </Text>
             <View
@@ -192,17 +185,8 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
                 { backgroundColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)' },
               ]}
             />
-            <Text style={[styles.activitySub, { color: '#f97316', fontWeight: '800' }]}>
+            <Text style={[styles.activitySub, { color: colors.ember, fontWeight: '800' }]}>
               {regionalStats.caloriesBurned} kcal
-            </Text>
-            <View
-              style={[
-                styles.pillDivider,
-                { backgroundColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)' },
-              ]}
-            />
-            <Text style={[styles.activitySub, { color: theme.textColor }]}>
-              {regionalStats.dailyDistanceKm} km
             </Text>
           </TouchableOpacity>
         )}
@@ -361,17 +345,13 @@ const styles = StyleSheet.create({
   streakCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 4,
+    gap: space.xs,
   },
   streakEmoji: {
-    fontSize: 13,
+    fontSize: fontSize.body,
   },
   streakText: {
-    fontSize: 12,
+    fontSize: fontSize.body,
     fontWeight: '800',
   },
   topIconsGroup: {
@@ -460,9 +440,9 @@ const styles = StyleSheet.create({
     height: 14,
   },
   floatingRecenterFab: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: size.fab,
+    height: size.fab,
+    borderRadius: size.fab / 2,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -472,8 +452,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   floatingRecenterSymbol: {
-    fontSize: 20,
-    fontWeight: '800',
+    width: size.fab,
+    fontSize: size.fabIcon,
+    lineHeight: size.fab - 2, // compensa el borde de 1px para centrar el glifo
+    fontWeight: '400',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   bottomTabBar: {
     flexDirection: 'row',

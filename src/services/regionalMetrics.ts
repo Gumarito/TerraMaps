@@ -105,8 +105,9 @@ export function calculateRegionalMetrics(
   const countryPct = Math.min(100, (totalAreaM2 / REGIONAL_AREAS_M2.COUNTRY_MEXICO_M2) * 100);
 
   // 2. Estimación calórica y contador de pasos (longitud de zancada promedio = 0.762m => 1312 pasos/km)
-  const distKm = dailyDistanceMeters > 0 ? dailyDistanceMeters / 1000 : (totalAreaM2 / 1250) * 0.035;
-  const steps = Math.max(120, Math.round(distKm * 1312));
+  // Solo depende del movimiento real (distancia de sesión), no de celdas desbloqueadas.
+  const distKm = Math.max(0, dailyDistanceMeters) / 1000;
+  const steps = Math.round(distKm * 1312);
   const calories = Math.round(distKm * 65);
 
   // 3. Formateo de tiempo activo
@@ -125,8 +126,8 @@ export function calculateRegionalMetrics(
     countryName: 'México',
     countryPercent: countryPct,
     countryFormatted: countryPct < 0.0001 ? '<0.001%' : `${countryPct.toFixed(4)}%`,
-    caloriesBurned: Math.max(15, calories),
-    dailyDistanceKm: Math.round(distKm * 10) / 10,
+    caloriesBurned: calories,
+    dailyDistanceKm: Math.round(distKm * 100) / 100,
     activeTimeFormatted: timeFormatted,
     estimatedSteps: steps,
     regionalCities: REGIONAL_CITY_NAMES,

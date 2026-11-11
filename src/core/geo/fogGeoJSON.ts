@@ -179,26 +179,77 @@ export function organicSmoothPolygon(ring: LngLatTuple[]): LngLatTuple[] {
     return circle;
   }
 
-  // 2. Territorio compuesto: Subdivisión densa de segmentos para eliminar líneas rectas largas
-  const densePts: LngLatTuple[] = [];
-  for (let i = 0; i < ring.length - 1; i++) {
-    const p0 = ring[i];
-    const p1 = ring[i + 1];
-    densePts.push(p0);
+  // 2. Territorio compuesto: Suavizado radial Gaussiano/Fourier para eliminar bordes estrellados
+  // En lugar de contraer esquinas (que produce puntas de estrella en esquinas convexas),
+  // calculamos el radio r(theta) alrededor del centroide y aplicamos un filtro de paso bajo (rolling average circular)
+  const n = ring.length - 1;
+  const samples: { angle: number; dist: number; lng: number; lat: number }[] = [];
+  const latScale = Math.cos((cLat * Math.PI) / 180);
 
-    for (let step = 1; step <= 3; step++) {
-      const t = step / 4;
-      const interpLng = p0[0] + t * (p1[0] - p0[0]);
-      const interpLat = p0[1] + t * (p1[1] - p0[1]);
-      // Contracción sutil hacia el centroide para redondear salientes
-      const roundedLng = cLng + (interpLng - cLng) * 0.90;
-      const roundedLat = cLat + (interpLat - cLat) * 0.90;
-      densePts.push([roundedLng, roundedLat]);
-    }
+  for (let i = 0; i < n; i++) {
+    const dLng = (ring[i][0] - cLng) * latScale;
+    const dLat = ring[i][1] - cLat;
+    const angle = Math.atan2(dLat, dLng);
+    const dist = Math.sqrt(dLng * dLng + dLat * dLat);
+    samples.push({ angle, dist, lng: ring[i][0], lat: ring[i][1] });
   }
-  densePts.push([densePts[0][0], densePts[0][1]]);
 
-  return chaikinSmooth(densePts, 3);
+  // Ordenar radialmente por ángulo relativo
+  samples.sort((a, b) => a.angle - b.angle);
+
+  // Muestrear a 48 puntos angulares uniformes con interpolación circular suave
+  const numUniform = 48;
+  const uniformPts: LngLatTuple[] = [];
+  const rawDistances: number[] = new Array(numUniform);
+
+  for (let i = 0; i < numUniform; i++) {
+    const targetAngle = -Math.PI + (i * 2 * Math.PI) / numUniform;
+    
+    // Buscar los dos vecinos angulares más cercanos
+    let idx0 = samples.length - 1;
+    let idx1 = 0;
+    for (let j = 0; j < samples.length; j++) {
+      if (samples[j].angle >= targetAngle) {
+        idx1 = j;
+        idx0 = (j - 1 + samples.length) % samples.length;
+        break;
+      }
+    }
+    
+    const s0 = samples[idx0];
+    const s1 = samples[idx1];
+    let diff = s1.angle - s0.angle;
+    if (diff < 0) diff += 2 * Math.PI;
+    let t = diff > 0 ? (targetAngle - s0.angle) / diff : 0;
+    if (t < 0) t += (2 * Math.PI) / (diff || 1);
+    t = Math.max(0, Math.min(1, t));
+
+    // Distancia interpolada
+    rawDistances[i] = s0.dist * (1 - t) + s1.dist * t;
+  }
+
+  // Filtro de media móvil circular de 5 puntos (elimina picos/puntas y genera contorno redondeado aerógrafo)
+  const smoothedDistances = new Array(numUniform);
+  for (let i = 0; i < numUniform; i++) {
+    let sum = 0;
+    for (let k = -2; k <= 2; k++) {
+      const idx = (i + k + numUniform) % numUniform;
+      sum += rawDistances[idx];
+    }
+    smoothedDistances[i] = sum / 5;
+  }
+
+  // Reconstruir coordenadas geográficas redondeadas sin picos
+  for (let i = 0; i < numUniform; i++) {
+    const angle = -Math.PI + (i * 2 * Math.PI) / numUniform;
+    const r = smoothedDistances[i];
+    const dLng = (r * Math.cos(angle)) / latScale;
+    const dLat = r * Math.sin(angle);
+    uniformPts.push([cLng + dLng, cLat + dLat]);
+  }
+  uniformPts.push([uniformPts[0][0], uniformPts[0][1]]);
+
+  return uniformPts;
 }
 
 /**

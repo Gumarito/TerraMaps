@@ -49,9 +49,87 @@
 2. ¿Se abre TM-004 para `expo-task-manager` y el flujo de permisos en runtime?
 3. ¿Se autoriza `npx expo config` para validar?
 
+### Voto técnico: rediseño UI/UX, `Cambios.md` (10 puntos) y liderazgo de diseño
+
+**Alcance de esta revisión:** leí `Cambios.md` y la lista de componentes de `src/components`. No audité el código de cada punto. Los diagnósticos de abajo son hipótesis por síntoma y hay que confirmarlas al abrir cada archivo. No se modificó ningún archivo salvo este buzón.
+
+**Diagnóstico por punto**
+
+| # | Diagnóstico | Dónde mirar | Acción |
+|---|---|---|---|
+| 1 | Pide "sin curvas ni esquinas", lo cual se contradice. Lo más probable es que quiera bordes orgánicos sin picos ni artefactos. Chaikin con pocas pasadas deja esquinas en las uniones de corredores. | `src/core/geo/fogGeoJSON.ts` (`organicSmoothPolygon`) | Preguntar al usuario qué quiere (¿contorno continuo suave?). Subir pasadas de Chaikin, unir círculos y corredores antes de suavizar. |
+| 2 | Las métricas se recalculan solo cuando se desbloquea una celda. Tienen que salir de un `onLocationUpdate` continuo (Pedometer y delta de GPS), independiente del descubrimiento. | `MapHUD.tsx`, `transportClassifier.ts` | Estado `sessionMetrics` actualizado por tick. Ver la definición de km abajo. |
+| 3 | El botón de sincronizar redes sociales no abre nada. Sobra el buscador. | `FriendsModal.tsx` | Botón abre hoja de vinculación (OAuth o deep link). Se elimina el buscador. |
+| 4 | "Autenticación y contactos" está duplicado en Perfil y Amigos. | `ProfileModal.tsx`, `FriendsModal.tsx` | Dejar la sección solo en Amigos. Perfil muestra únicamente el estado. |
+| 5 | Falta un sistema de diseño. Cada pantalla define sus estilos. | todos los modales | Ver propuesta de tokens abajo. |
+| 6 | Radar activo pasa a ser "Modo Fantasma", solo premium. | `MapHUD.tsx` | Depende del punto 7. Sin vínculo no tiene sentido. |
+| 7 | Falta la función central: vínculo de pareja. | nuevo `LinkModal` | Reemplaza el botón Lugares. Ver riesgos de privacidad abajo. |
+| 8 | El icono de la diana es demasiado pequeño dentro del contenedor. | `MapHUD.tsx` | Icono al ~45-50% del contenedor, que debe medir ~40-44 px. |
+| 9 | Racha: volver a solo número y llama. | `MapHUD.tsx` | Cambio mínimo. |
+| 10 | Los límites de no premium bloquean la prueba de skins. | `ThemeSelectorModal.tsx` | Flag solo de desarrollo (`__DEV__`) que desbloquea todo. Nunca en producción. |
+
+**Definición propuesta para los km del punto 2 (confusos hoy):**
+- `km recorridos` = distancia caminada en la sesión, acumulada por GPS con filtro de ruido.
+- `km² descubiertos` = área de niebla despejada. Es otra unidad y va en otro lugar.
+- Se muestran etiquetados. Ninguna métrica depende de que se despeje una celda.
+
+**Votos técnicos**
+
+1. **Lugares y Monumentos: de acuerdo con el usuario, se elimina.** No escala a escala global, y el costo de datos y almacenamiento es alto. Se reemplaza por el vínculo de pareja (punto 7). Si más adelante se quiere algo de ese tipo, se puede usar una fuente abierta como OSM o Wikidata, cargada bajo demanda y sin empaquetar.
+2. **Botón "PASO" verde:** es herramienta de desarrollo. Propongo esconderlo tras `__DEV__` y excluirlo del build de producción. No hay que borrarlo, nos sirve para probar sin caminar.
+3. **Vínculo de pareja y Modo Fantasma: de acuerdo con la idea, con un límite que no es opcional.**
+   - Google Play y Apple tienen políticas explícitas contra el stalkerware. El diseño tiene que ser de consentimiento mutuo: ambos aceptan, cualquiera puede romper el vínculo, y existe un indicador visible mientras se comparte la ubicación.
+   - El Modo Fantasma es compatible con eso, porque lo controla quien comparte. Al activarlo, la pareja ve "ubicación pausada" y no el último dato fresco. No se debe fingir que la ubicación sigue en vivo.
+   - La ficha de la tienda y el marketing no deben usar el ángulo de parejas "tóxicas". Una app de vigilancia entre parejas se rechaza o se retira. Se vende como "exploren juntos". Esto no cambia la funcionalidad, solo el posicionamiento. Pido al usuario que lo confirme.
+   - Esto es un cambio de esquema en la base de datos (tabla de vínculos, consentimiento, RLS en Supabase). Por la regla 1 de `AGENTS.md`, requiere revisión previa mía antes de ejecutarse.
+4. **Liderazgo del diseño: voto por Claude como ejecutor principal, con Antigravity como director de visión.**
+   - La razón es práctica. El resultado actual lo dejó el Tech Lead, el propio documento dice "has fracasado en el diseño", y su cuota Gemini está al 28%. Claude tiene 89% y es más fuerte escribiendo estilos de React Native coherentes.
+   - Hay un sesgo que debo declarar: yo soy parte interesada en este voto. Lo mitiga dividir el trabajo como se indica abajo y revisar el resultado con capturas.
+   - Fable no hace falta. Es trabajo de UI, no geometría H3 ni concurrencia. Queda sin invocar.
+5. **Herramientas y plugins: casi nada que instalar.**
+   - Un plugin de diseño no arregla la falta de criterio ni de sistema. Lo que falta es un sistema de tokens y un bucle de verificación visual.
+   - Propongo crear `src/theme/tokens.ts` (colores Obsidian & Titanium, escala de espaciado de 4 px, radios, tipografía, elevaciones) y un `DESIGN.md` corto con reglas de uso. Todos los componentes importan de ahí.
+   - Para verificar: capturas de la versión web con el skill `run` y comparación antes/después. Sin dependencias nuevas.
+   - Descarto Figma y otros plugins pesados: gastan tokens y no cambian el resultado. Pido que Antigravity valide con el usuario antes de añadir cualquier dependencia visual.
+
+**División de trabajo propuesta**
+
+| Fase | Responsable | Contenido |
+|---|---|---|
+| D0 | Antigravity | Dirección de visión: 3-5 referencias, paleta y tono en `DESIGN.md`. Costo de cuota bajo. |
+| D1 | Claude | `tokens.ts` + componentes base (`Button`, `Card`, `Chip`, `HudButton`). |
+| D2 | Claude | Puntos 8, 9, 2, 4, 10 (cambios pequeños, aplican tokens). |
+| D3 | Claude | Punto 3 (vincular redes) y punto 7 (vínculo de pareja) tras mi revisión del esquema. |
+| D4 | Antigravity | Punto 1 (geometría de niebla) junto con mi revisión de `fogGeoJSON.ts`. Si el contorno resulta crítico, evaluar Fable. |
+| D5 | Copilot | Traducciones (pre-lanzamiento punto 5) y ajustes de estilo menores una vez que existan los tokens. |
+| Cierre | Claude | `tsc` 0 errores, `runTests.js` 74/74, capturas web antes/después. |
+
+Máximo 2 rondas por fase, según las reglas. Antes de despachar cada tarea hay checkpoint en rama `agent/claude/<id>`.
+
+**Pre-lanzamiento (resumen):** compatibilidad Android/iOS, rendimiento y batería, seguridad, traducción y anti-copia entran después del rediseño. Sobre "difícil de copiar para otras IA": se puede ofuscar el build (Hermes y minificación) pero no impedir que se copie el diseño visible. No lo prometería. La protección real está en el servidor: lógica de negocio y premium en Supabase, no en el cliente.
+
+**Preguntas para el usuario (antes de empezar):**
+1. Punto 1: ¿qué quiere decir exactamente "que deje de ser curvo, que no tenga esquinas"?
+2. ¿Confirma el posicionamiento de pareja como "exploren juntos" con consentimiento mutuo, en lugar de "parejas tóxicas"?
+3. ¿Qué referencias de diseño le gustan (apps o capturas)? Eso acelera D0 más que cualquier herramienta.
+
 ---
 
 ## 2. Reportes de Ejecución y Auditorías
+
+### Reporte TM-005: Sincronización por lotes y Realtime con Supabase
+- **Agente:** Claude Code (`--model sonnet`)
+- **Archivos:** `src/services/supabaseSync.ts` (nuevo), `src/services/__tests__/supabaseSync.test.ts` (nuevo). No se tocó `.env*`.
+- **Diseño:** `HexSyncEngine` recibe transporte, storage y timers por inyección (testeable sin red). Cola en `@terramaps_supabase_sync_pending`; lotes de 100 con `upsert` (`ignoreDuplicates`); debounce 5 s; backoff 2 s→60 s, máx. 5 reintentos; `notifyOnline()` reanuda. Realtime: canal `terramaps_sync_<userId>` con filtro `user_id=eq.<id>`, reconexión con backoff, cierre al quedar sin listeners.
+- **Salida `npx tsc --noEmit`:**
+  ```
+  backups/agent_checkpoints/TM-005/routeTrackerService.ts(2,41): error TS2307: Cannot find module '../core/battery/batteryShield' or its corresponding type declarations.
+  ```
+  Sin errores en `src/`. El único error es preexistente, en una copia de respaldo. No lo toqué.
+- **Sin verificar:**
+  - La suite no se ejecutó (el entorno pidió aprobación para correr node). `node scripts/runTests.js` tampoco se corrió.
+  - `runSupabaseSyncVerification()` no está enganchada a `mathVerification.ts`. Hay que llamarla desde `runAllVerifications`, y eso cambia el total de 74 aserciones.
+- **Pendiente para integrarlo:** `syncService.ts` sigue teniendo su propio sync con otra clave de cola (`@terramaps_unsynced_hexes`). Decidir si `supabaseSync` lo reemplaza y llamar a `enqueue()` donde se desbloquean celdas. No exporté el módulo en `services/index.ts` para evitar colisiones.
 
 ### Reporte TM-004: Integración de expo-task-manager y Foreground Service
 - **Agente:** Claude Code (`--model sonnet`)
@@ -94,3 +172,13 @@
 ## 3. Bloqueos, Deuda Técnica o Riesgos Detectados
 
 *(Si tras 2 rondas algo no funciona o se detecta un riesgo en librerías o concurrencia, Claude lo documenta aquí)*
+
+### Reporte D1 + D2: tokens y ajustes de HUD / selector de skins
+- **Agente:** Claude Code (Sonnet). Sin tocar `.env*`.
+- **D1:** `src/theme/tokens.ts` (nuevo): `space` (escala 4px), `radius`, `fontSize`, `fontWeight`, `colors` (Obsidian & Titanium), `size` (FAB 42, icono 20). Los componentes base (`Button`, `Card`, `Chip`, `HudButton`) NO se crearon todavía.
+- **Punto 8 (FAB):** `MapHUD.tsx`, botón 42px, glifo `◎` de 20px con `lineHeight`, `textAlign` y `includeFontPadding: false` para centrarlo. Sin verificar visualmente en dispositivo.
+- **Punto 9 (racha):** solo `🔥 N`, sin caja ni borde. Atenuado si hoy no hay actividad. Nota: AGENTS.md prohíbe emojis en la UI; se usó 🔥 porque el usuario lo pidió expresamente. Si se prefiere un símbolo geométrico, es un cambio de una línea.
+- **Punto 2 (km/pasos/kcal):** causa raíz en `regionalMetrics.ts`: cuando la distancia era 0 se estimaba por área de celdas (y había mínimos de 120 pasos / 15 kcal). Ahora solo dependen de `routeDistanceMeters` (movimiento real). La píldora muestra km (2 decimales), pasos y kcal.
+- **Punto 10:** `accessControl.ts`: `getThemeLockReason` devuelve `null` si `__DEV__`, así modal y `App.tsx` (`resolveAccessibleThemeId`) coinciden. `ThemeSelectorModal.tsx`: ScrollView con `flexShrink`, `nestedScrollEnabled` y sin `maxHeight` fijo de 460.
+- **Verificación:** `npx tsc --noEmit` 0 errores; `node scripts/runTests.js` 74/74.
+- **Pendiente:** punto 4, componentes base de D1, capturas web antes/después.

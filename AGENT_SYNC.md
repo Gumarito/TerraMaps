@@ -29,6 +29,14 @@
 
 ## 3. Hecho
 
+### [TM-005] Servicio de Sincronización en la Nube con Supabase Realtime
+- **Agente asignado:** Claude Code (`--model sonnet`)
+- **Archivos creados:** `src/services/supabaseSync.ts`, `src/services/__tests__/supabaseSync.test.ts`
+- **Resultado:** `HexSyncEngine` (inyectable) con cola persistente, lotes de 100, debounce 5s, reintento con backoff exponencial (máx. 5) y suscripción Realtime filtrada por `user_id` con reconexión. Instancia lista: `supabaseSync`.
+- **Validación:**
+  - `npx tsc --noEmit`: 0 errores en `src/`; 1 error preexistente fuera de alcance en `backups/agent_checkpoints/TM-005/routeTrackerService.ts` (import roto en una copia de respaldo).
+  - `node scripts/runTests.js`: NO ejecutado. La suite nueva (`runSupabaseSyncVerification`) no está enganchada a `src/core/tests/mathVerification.ts` y no se ha podido correr aquí (pendiente del Tech Lead).
+
 ### [TM-004] Integración de `expo-task-manager` y Foreground Service en segundo plano
 - **Agente asignado:** Claude Code (`--model sonnet`)
 - **Archivos modificados:** `package.json`, `src/core/battery/expoProviders.ts`, `src/components/modals/OnboardingModal.tsx`
