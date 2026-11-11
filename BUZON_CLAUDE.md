@@ -208,3 +208,29 @@ Máximo 2 rondas por fase, según las reglas. Antes de despachar cada tarea hay 
 - **GPS real**: el contador en vivo se alimenta del simulador; no hay `watchPosition` continuo en el hook (solo lectura inicial).
 - El radar fuera de pantalla solo funciona en web; `TerraMap.native` no emite viewport ni dibuja socios.
 - El tab Pareja usa el glifo `∞`; la racha del HUD aún usa 🔥 (pendiente por invariante de estética).
+
+---
+
+## Rediseño integral de interfaz premium (2026-11-10)
+
+Verificación: `npx tsc --noEmit` = 0 errores · `node scripts/runTests.js` = 74/74. **No probado visualmente en dispositivo** (no se lanzó la app); falta validar en el móvil.
+
+| # | Estado | Detalle |
+|---|--------|---------|
+| 1 | OK (causa raíz) | La etiqueta de la pareja quedaba tras el logo porque `updateZoomCulling` (`TerraMap.web.tsx`) escribía `style.transform = scale(..)` en el elemento raíz del marcador; MapLibre posiciona ese mismo elemento con `transform: translate`, así que el marcador caía en (0,0). Nuevo `applyMarkerCulling`: solo `display` en el raíz y opacidad/escala en el hijo interno (también para monumentos). Además el radar fuera de pantalla reserva `insetTop=96` / `insetBottom=170` para no tapar header ni barra. |
+| 2 | OK | Eliminado el `onLongPress` del logo (ahora es una `View` estática) y la prop `onOpenDevTools` del HUD. Nueva fila "Herramientas del explorador" en el pie de Perfil (sección AVANZADO) → abre `DevToolsModal` (Limpiar Mapa / Teletransporte). |
+| 3 | OK | `ThemeSelectorModal` rehecho: cuadrícula de tarjetas con miniatura (gradiente, retícula de calles, zona despejada con halo, marcador y cinta de paleta niebla·halo·acento), etiquetas de contorno fino (ACTIVA / PRO / POR PROGRESO) en vez de badges amarillos. Recibe `theme` para modo claro/oscuro. |
+| 3b | **ATENCIÓN** | Acceso Pro automático: `PREVIEW_UNLOCK_ALL_PRO = true` en `entitlementService.ts` (`DEV_UNLIMITED_PRO = __DEV__ \|\| PREVIEW_UNLOCK_ALL_PRO`). Esto desbloquea todo lo PRO **también en builds de producción**. **Poner en `false` antes de publicar en tiendas.** |
+| 4 | OK | `ProfileModal` rehecho: tarjeta hero con micro-gradiente (monograma, rango, nivel dominante, progreso), fila Terra PRO, StatTiles, datos regionales en `DataRow`, logros con glifos `◈/◇` (sin emojis), control segmentado para el radio (30/45/60/85 m, 85 sigue siendo PRO), biometría, sonido. Sin verdes fosforescentes ni bordes de 1.5px; hairlines y acento del tema. |
+| 5 | OK | `RoutesHistoryModal` y `FriendsModal` migrados a `ModalShell`/`SurfaceCard`. Eliminados los botones "Volver al Mapa" (el cierre es la ✕ de la cabecera); acciones compactas ("Ver en el mapa", "Eliminar"); período como control segmentado; métricas en columnas. |
+| 6 | OK | Skills aplicadas como criterio (jerarquía, targets ≥42px, `accessibilityRole/State`, estados vacíos). No se ejecutó la revisión formal `code-review-and-quality`. |
+
+### Cambios de base
+- `tokens.ts`: `emerald`, `goldSoft`, `cardGradientFrom/To`.
+- `ModalShell.tsx` ahora exporta además: `SectionLabel`, `StatTile`, `Tag`, `DataRow`, `ActionButton` y `SurfaceCard` con `tone="hero"` (usa `expo-linear-gradient`, ya instalado). `modalPalette` suma `gradient`, `gold`, `positive`.
+- HUD: racha con glifo `◆` en vez de 🔥 (cierra la deuda de estética del punto anterior).
+
+### Pendiente / no cubierto
+- `SocialShareModal`, `CoupleLinkModal`, `ProPaywallModal`, `TimelinePaywallModal`, `OnboardingModal`, `LeaderboardModal`, `DroneModal` siguen con estilos propios (fuera del alcance pedido).
+- `achievementsService` aún devuelve `iconEmoji`; Perfil ya no lo muestra, pero otros consumidores podrían.
+- La pareja solo se dibuja en web; `TerraMap.native` sigue sin marcadores de socios.

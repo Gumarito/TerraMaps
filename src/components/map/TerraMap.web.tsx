@@ -39,6 +39,22 @@ declare global {
   }
 }
 
+/**
+ * Oculta/muestra un marcador HTML según el zoom. MapLibre posiciona el elemento raíz con
+ * `style.transform` (translate): tocarlo lo manda a la esquina (0,0), detrás del HUD.
+ * Por eso el efecto visual va en el hijo interno y solo `display` en el raíz.
+ */
+function applyMarkerCulling(root: HTMLElement | undefined, hide: boolean): void {
+  if (!root) return;
+  root.style.display = hide ? 'none' : 'flex';
+  const inner = root.firstElementChild as HTMLElement | null;
+  if (inner) {
+    inner.style.opacity = hide ? '0' : '1';
+    inner.style.pointerEvents = hide ? 'none' : 'auto';
+    inner.style.transform = hide ? 'scale(0.5)' : 'scale(1)';
+  }
+}
+
 const TerraMapComponent: React.FC<TerraMapProps> = ({
   userCoordinates = [-99.1332, 19.4326],
   fogGeoJSON,
@@ -260,25 +276,8 @@ const TerraMapComponent: React.FC<TerraMapProps> = ({
           const z = map.getZoom();
           const shouldHide = z < 13.2;
 
-          partnerMarkersRef.current.forEach((marker) => {
-            const mEl = marker.getElement();
-            if (mEl) {
-              mEl.style.display = shouldHide ? 'none' : 'flex';
-              mEl.style.opacity = shouldHide ? '0' : '1';
-              mEl.style.pointerEvents = shouldHide ? 'none' : 'auto';
-              mEl.style.transform = shouldHide ? 'scale(0.5)' : 'scale(1)';
-            }
-          });
-
-          landmarkMarkersRef.current.forEach((marker) => {
-            const mEl = marker.getElement();
-            if (mEl) {
-              mEl.style.display = shouldHide ? 'none' : 'flex';
-              mEl.style.opacity = shouldHide ? '0' : '1';
-              mEl.style.pointerEvents = shouldHide ? 'none' : 'auto';
-              mEl.style.transform = shouldHide ? 'scale(0.5)' : 'scale(1)';
-            }
-          });
+          partnerMarkersRef.current.forEach((marker) => applyMarkerCulling(marker.getElement(), shouldHide));
+          landmarkMarkersRef.current.forEach((marker) => applyMarkerCulling(marker.getElement(), shouldHide));
         };
 
         map.on('zoom', updateZoomCulling);

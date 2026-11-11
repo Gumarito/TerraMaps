@@ -71,10 +71,14 @@ const EMPTY_SNAPSHOT: EntitlementSnapshot = {
 };
 
 /**
- * Acceso PRO ilimitado SOLO en desarrollo (`__DEV__`). Los builds de producción nunca lo activan:
- * allí el estado sigue dependiendo exclusivamente de lo que confirma el servidor.
+ * FASE DE PRUEBAS: desbloquea todo lo PRO en cualquier build para que se puedan probar las skins
+ * y funciones en el móvil. DEBE ponerse en `false` antes de publicar en tiendas: con `false`,
+ * solo `__DEV__` conserva el acceso y producción depende exclusivamente del servidor.
  */
-export const DEV_UNLIMITED_PRO: boolean = __DEV__;
+const PREVIEW_UNLOCK_ALL_PRO = true;
+
+/** Acceso PRO ilimitado: siempre en `__DEV__`, y en builds de prueba mientras `PREVIEW_UNLOCK_ALL_PRO`. */
+export const DEV_UNLIMITED_PRO: boolean = __DEV__ || PREVIEW_UNLOCK_ALL_PRO;
 
 const DEV_PRO_SNAPSHOT: EntitlementSnapshot = {
   isPro: true,

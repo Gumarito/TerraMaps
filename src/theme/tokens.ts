@@ -46,6 +46,13 @@ export const colors = {
   ember: '#f97316',
   gold: '#eab308',
   danger: '#f87171',
+  /** Esmeralda sobria para estados activos/logrados (sustituye verdes fosforescentes). */
+  emerald: '#34d399',
+  /** Oro satinado de acabado (badges PRO, rangos). */
+  goldSoft: '#c9a227',
+  /** Cabecera de tarjetas: micro-gradiente obsidiana → grafito. */
+  cardGradientFrom: '#131a2b',
+  cardGradientTo: '#0b0f19',
 } as const;
 
 export const size = {

@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { MapTheme } from '@/core/theme/mapThemes';
-import { colors, radius, size, space } from '@/theme/tokens';
 import { authService } from '@/services/authService';
+import { ModalShell, SurfaceCard, SectionLabel, Tag, ActionButton, modalPalette } from '../ui/ModalShell';
+import { fontSize, fontWeight, radius, space } from '@/theme/tokens';
 
 export interface FriendProfile {
   id: string;
@@ -40,7 +34,7 @@ const SOCIAL_PROVIDERS: ReadonlyArray<{ id: SocialProviderId; label: string; dot
   { id: 'instagram', label: 'Instagram', dotColor: '#e1306c' },
 ];
 
-const INITIAL_FRIENDS:FriendProfile[] = [
+const INITIAL_FRIENDS: FriendProfile[] = [
   {
     id: 'f1',
     name: 'Sofía Morales',
@@ -87,741 +81,224 @@ const INITIAL_FRIENDS:FriendProfile[] = [
   },
 ];
 
-export const FriendsModal: React.FC<FriendsModalProps> = ({
-  visible,
-  onClose,
-  accentColor = '#00f5d4',
-  userKm2 = 0.52,
-  theme,
-}) => {
-  const isLight = theme?.mode === 'light';
-  const effectiveAccent = isLight ? (theme?.accentColor || '#2563eb') : accentColor;
+const PlaceList: React.FC<{ places: string[]; dot: string; text: string; border: string; bg: string }> = ({
+  places,
+  dot,
+  text,
+  border,
+  bg,
+}) => (
+  <View style={styles.placesGrid}>
+    {places.map((place) => (
+      <View key={place} style={[styles.place, { borderColor: border, backgroundColor: bg }]}>
+        <View style={[styles.placeDot, { backgroundColor: dot }]} />
+        <Text style={[styles.placeText, { color: text }]}>{place}</Text>
+      </View>
+    ))}
+  </View>
+);
 
+export const FriendsModal: React.FC<FriendsModalProps> = ({ visible, onClose, userKm2 = 0.52, theme }) => {
+  const p = modalPalette(theme);
   const [friends, setFriends] = useState<FriendProfile[]>(INITIAL_FRIENDS);
   const [selectedFriendId, setSelectedFriendId] = useState<string>('f1');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const selectedFriend = friends.find((f) => f.id === selectedFriendId) || friends[0];
 
+  const flash = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(null), 3500);
+  };
+
   const handleSocialLogin = async (provider: SocialProviderId) => {
     const res = await authService.signInWithSocialProvider(provider);
-    if (res.success) {
-      setSuccessMsg(`Cuenta vinculada con ${provider.toUpperCase()}.`);
-      setTimeout(() => setSuccessMsg(null), 3500);
-    }
+    if (res.success) flash(`Cuenta vinculada con ${provider.toUpperCase()}.`);
   };
 
   const handleSyncSocial = async () => {
     const res = await authService.syncSocialContacts('all');
-    if (res.success) {
-      const newEntries: FriendProfile[] = res.friends.map((f) => ({
-        id: `social_${f.username}`,
-        name: f.name,
-        username: f.username,
-        initials: f.initials,
-        km2: f.km2,
-        relation: f.source,
-        isOnline: true,
-        commonPlaces: f.commonPlaces,
-        friendOnlyPlaces: ['Coyoacán Histórico', 'Monumento a la Revolución'],
-      }));
-
-      setFriends((prev) => {
-        const existing = new Set(prev.map((p) => p.username.toLowerCase()));
-        const toAdd = newEntries.filter((e) => !existing.has(e.username.toLowerCase()));
-        return [...prev, ...toAdd];
-      });
-
-      setSuccessMsg(`${res.syncedCount} amigos de Facebook e Instagram sincronizados.`);
-      setTimeout(() => setSuccessMsg(null), 3500);
-    }
+    if (!res.success) return;
+    const newEntries: FriendProfile[] = res.friends.map((f) => ({
+      id: `social_${f.username}`,
+      name: f.name,
+      username: f.username,
+      initials: f.initials,
+      km2: f.km2,
+      relation: f.source,
+      isOnline: true,
+      commonPlaces: f.commonPlaces,
+      friendOnlyPlaces: ['Coyoacán Histórico', 'Monumento a la Revolución'],
+    }));
+    setFriends((prev) => {
+      const existing = new Set(prev.map((x) => x.username.toLowerCase()));
+      return [...prev, ...newEntries.filter((e) => !existing.has(e.username.toLowerCase()))];
+    });
+    flash(`${res.syncedCount} amigos de Facebook e Instagram sincronizados.`);
   };
 
   const maxKm2 = Math.max(userKm2, selectedFriend.km2, 0.1);
   const userPercent = Math.min(100, Math.round((userKm2 / maxKm2) * 100));
   const friendPercent = Math.min(100, Math.round((selectedFriend.km2 / maxKm2) * 100));
+  const placeBg = p.isLight ? '#ffffff' : 'rgba(255,255,255,0.04)';
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View
-          style={[
-            styles.modalCard,
-            {
-              backgroundColor: isLight ? '#ffffff' : '#0c101d',
-              borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.12)',
-            },
-          ]}
-        >
-          {/* Header Ejecutivo */}
-          <View
-            style={[
-              styles.header,
-              { borderBottomColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)' },
-            ]}
-          >
-            <View>
-              <Text
-                style={[
-                  styles.headerSubtitle,
-                  { color: isLight ? '#64748b' : '#94a3b8' },
-                ]}
-              >
-                COMPARATIVA DE EXPLORACIÓN
-              </Text>
-              <Text
-                style={[
-                  styles.title,
-                  { color: isLight ? '#0f172a' : '#ffffff' },
-                ]}
-              >
-                Lugares & Contactos
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Text
-                style={[
-                  styles.closeText,
-                  { color: isLight ? '#64748b' : '#94a3b8' },
-                ]}
-              >
-                ✕
-              </Text>
+    <ModalShell visible={visible} onClose={onClose} theme={theme} eyebrow="COMPARATIVA DE EXPLORACIÓN" title="Lugares & Contactos">
+      {/* Selector de contactos */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contactsRow}>
+        {friends.map((friend) => {
+          const active = friend.id === selectedFriend.id;
+          return (
+            <TouchableOpacity
+              key={friend.id}
+              style={[styles.contact, { borderColor: active ? p.accent : p.hairline, backgroundColor: active ? p.raised : 'transparent' }]}
+              onPress={() => setSelectedFriendId(friend.id)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <View style={[styles.avatar, { borderColor: active ? p.accent : p.border }]}>
+                <Text style={[styles.avatarText, { color: active ? p.accent : p.text }]}>{friend.initials}</Text>
+                {friend.isOnline && <View style={[styles.online, { backgroundColor: p.positive, borderColor: p.surface }]} />}
+              </View>
+              <View>
+                <Text style={[styles.contactName, { color: p.text }]} numberOfLines={1}>
+                  {friend.name}
+                </Text>
+                <Text style={[styles.contactRel, { color: p.subtext }]}>{friend.relation}</Text>
+              </View>
             </TouchableOpacity>
-          </View>
+          );
+        })}
+      </ScrollView>
 
-          {/* Carrusel de Contactos / Selector Limpio */}
-          <View style={styles.contactsSelectorWrapper}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contactsRow}>
-              {friends.map((friend) => {
-                const isSelected = friend.id === selectedFriend.id;
-                return (
-                  <TouchableOpacity
-                    key={friend.id}
-                    style={[
-                      styles.contactChip,
-                      {
-                        backgroundColor: isSelected
-                          ? (isLight ? 'rgba(37, 99, 235, 0.08)' : 'rgba(255, 255, 255, 0.08)')
-                          : (isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)'),
-                        borderColor: isSelected
-                          ? effectiveAccent
-                          : (isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)'),
-                      },
-                    ]}
-                    onPress={() => setSelectedFriendId(friend.id)}
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={[
-                        styles.chipAvatar,
-                        {
-                          backgroundColor: isSelected ? effectiveAccent : (isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)'),
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipAvatarText,
-                          { color: isSelected ? '#0b0f19' : (isLight ? '#475569' : '#f8fafc') },
-                        ]}
-                      >
-                        {friend.initials}
-                      </Text>
-                      {friend.isOnline && <View style={styles.chipOnlineBadge} />}
-                    </View>
-                    <View style={styles.chipInfo}>
-                      <Text
-                        style={[
-                          styles.chipName,
-                          { color: isLight ? '#0f172a' : '#ffffff', fontWeight: isSelected ? '700' : '500' },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {friend.name}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.chipRelation,
-                          { color: isLight ? '#64748b' : '#94a3b8' },
-                        ]}
-                      >
-                        {friend.relation}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator={false}>
-            {/* Tarjeta de Comparativa Territorial */}
-            <View
-              style={[
-                styles.comparisonBox,
-                {
-                  backgroundColor: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
-                  borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)',
-                },
-              ]}
-            >
-              <View style={styles.comparisonHeader}>
-                <Text
-                  style={[
-                    styles.comparisonSectionTitle,
-                    { color: isLight ? '#334155' : '#cbd5e1' },
-                  ]}
-                >
-                  TERRITORIO EXPLORADO
-                </Text>
-                <Text
-                  style={[
-                    styles.comparisonSubtitle,
-                    { color: isLight ? '#64748b' : '#94a3b8' },
-                  ]}
-                >
-                  Tú vs @{selectedFriend.username}
-                </Text>
-              </View>
-
-              {/* Barra Tú */}
-              <View style={styles.statProgressRow}>
-                <View style={styles.statLabels}>
-                  <Text style={[styles.statName, { color: isLight ? '#0f172a' : '#f8fafc' }]}>
-                    Tú
-                  </Text>
-                  <Text style={[styles.statValue, { color: effectiveAccent }]}>
-                    {userKm2.toFixed(2)} km²
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.barTrack,
-                    { backgroundColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)' },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.barFill,
-                      { width: `${userPercent}%`, backgroundColor: effectiveAccent },
-                    ]}
-                  />
-                </View>
-              </View>
-
-              {/* Barra Amigo */}
-              <View style={[styles.statProgressRow, { marginTop: 12 }]}>
-                <View style={styles.statLabels}>
-                  <Text style={[styles.statName, { color: isLight ? '#0f172a' : '#f8fafc' }]}>
-                    {selectedFriend.name}
-                  </Text>
-                  <Text style={[styles.statValue, { color: isLight ? '#475569' : '#94a3b8' }]}>
-                    {selectedFriend.km2.toFixed(2)} km²
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.barTrack,
-                    { backgroundColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)' },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.barFill,
-                      {
-                        width: `${friendPercent}%`,
-                        backgroundColor: isLight ? '#94a3b8' : 'rgba(255, 255, 255, 0.4)',
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* SECCIÓN 1: Lugares en Común (Coincidencias de Exploración) */}
-            <View
-              style={[
-                styles.placesSection,
-                {
-                  backgroundColor: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
-                  borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)',
-                },
-              ]}
-            >
-              <View style={styles.placesSectionHeader}>
-                <Text
-                  style={[
-                    styles.placesSectionTitle,
-                    { color: isLight ? '#0f172a' : '#f8fafc' },
-                  ]}
-                >
-                  Lugares en Común
-                </Text>
-                <View
-                  style={[
-                    styles.matchBadge,
-                    {
-                      backgroundColor: isLight ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.18)',
-                      borderColor: '#10b981',
-                    },
-                  ]}
-                >
-                  <Text style={styles.matchBadgeText}>
-                    {selectedFriend.commonPlaces.length} zonas coincidentes
-                  </Text>
-                </View>
-              </View>
-
-              <Text
-                style={[
-                  styles.placesSectionHint,
-                  { color: isLight ? '#64748b' : '#94a3b8' },
-                ]}
-              >
-                Puntos de interés y monumentos descubiertos por ambos:
-              </Text>
-
-              <View style={styles.placesTagsGrid}>
-                {selectedFriend.commonPlaces.map((place, idx) => (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.placeTagCard,
-                      {
-                        backgroundColor: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.06)',
-                        borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)',
-                      },
-                    ]}
-                  >
-                    <View style={styles.placeDotShared} />
-                    <Text
-                      style={[
-                        styles.placeTagText,
-                        { color: isLight ? '#0f172a' : '#f8fafc' },
-                      ]}
-                    >
-                      {place}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* SECCIÓN 2: Lugares Descubiertos por tu Amigo (Inspiración para ti) */}
-            <View
-              style={[
-                styles.placesSection,
-                {
-                  backgroundColor: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
-                  borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)',
-                  marginTop: 12,
-                },
-              ]}
-            >
-              <View style={styles.placesSectionHeader}>
-                <Text
-                  style={[
-                    styles.placesSectionTitle,
-                    { color: isLight ? '#0f172a' : '#f8fafc' },
-                  ]}
-                >
-                  Descubiertos por {selectedFriend.name}
-                </Text>
-                <View
-                  style={[
-                    styles.unlockedBadge,
-                    {
-                      backgroundColor: isLight ? 'rgba(56, 189, 248, 0.1)' : 'rgba(56, 189, 248, 0.15)',
-                      borderColor: '#38bdf8',
-                    },
-                  ]}
-                >
-                  <Text style={styles.unlockedBadgeText}>Por descubrir</Text>
-                </View>
-              </View>
-
-              <Text
-                style={[
-                  styles.placesSectionHint,
-                  { color: isLight ? '#64748b' : '#94a3b8' },
-                ]}
-              >
-                Zonas que {selectedFriend.name} ya desbloqueó y aún no has explorado:
-              </Text>
-
-              <View style={styles.placesTagsGrid}>
-                {selectedFriend.friendOnlyPlaces.map((place, idx) => (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.placeTagCard,
-                      {
-                        backgroundColor: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.04)',
-                        borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)',
-                      },
-                    ]}
-                  >
-                    <View style={styles.placeDotFriend} />
-                    <Text
-                      style={[
-                        styles.placeTagText,
-                        { color: isLight ? '#475569' : '#cbd5e1' },
-                      ]}
-                    >
-                      {place}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Formulario minimalista para añadir contactos */}
-            <View style={styles.addContactContainer}>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)',
-                  borderWidth: 1,
-                  borderColor: isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.12)',
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 10,
-                }}
-                onPress={handleSyncSocial}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: '700',
-                    color: isLight ? '#2563eb' : '#38bdf8',
-                  }}
-                >
-                  Sincronizar amigos de Facebook e Instagram
-                </Text>
-              </TouchableOpacity>
-
-              {/* Vinculación directa de redes sociales (única entrada de autenticación/contactos) */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {SOCIAL_PROVIDERS.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={{
-                      flex: 1,
-                      minWidth: '46%',
-                      minHeight: 44,
-                      paddingHorizontal: 12,
-                      borderRadius: 12,
-                      backgroundColor: isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.05)',
-                      borderWidth: 1,
-                      borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                    onPress={() => handleSocialLogin(item.id)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.dotColor }} />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: isLight ? '#0f172a' : '#f8fafc' }}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {successMsg && (
-                <Text style={[styles.successBanner, { color: effectiveAccent }]}>
-                  {successMsg}
-                </Text>
-              )}
-            </View>
-          </ScrollView>
-
-          {/* Botón Inferior */}
-          <TouchableOpacity
-            style={[styles.backToMapBtn, { backgroundColor: effectiveAccent }]}
-            onPress={onClose}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                styles.backToMapBtnText,
-                { color: isLight ? '#ffffff' : '#0b0f19' },
-              ]}
-            >
-              Volver al Mapa
-            </Text>
-          </TouchableOpacity>
+      {/* Comparativa */}
+      <SurfaceCard theme={theme} tone="hero">
+        <View style={styles.rowBetween}>
+          <Text style={[styles.eyebrow, { color: p.subtext }]}>TERRITORIO EXPLORADO</Text>
+          <Text style={[styles.eyebrow, { color: p.subtext }]}>@{selectedFriend.username}</Text>
         </View>
+        <Bar label="Tú" value={`${userKm2.toFixed(2)} km²`} percent={userPercent} color={p.accent} text={p.text} track={p.hairline} />
+        <Bar
+          label={selectedFriend.name}
+          value={`${selectedFriend.km2.toFixed(2)} km²`}
+          percent={friendPercent}
+          color={p.isLight ? '#94a3b8' : 'rgba(255,255,255,0.45)'}
+          text={p.text}
+          track={p.hairline}
+        />
+      </SurfaceCard>
+
+      {/* Lugares */}
+      <SectionLabel theme={theme} right={`${selectedFriend.commonPlaces.length} en común`}>
+        EN COMÚN
+      </SectionLabel>
+      <SurfaceCard theme={theme}>
+        <PlaceList places={selectedFriend.commonPlaces} dot={p.positive} text={p.text} border={p.hairline} bg={placeBg} />
+      </SurfaceCard>
+
+      <SectionLabel theme={theme} right="por descubrir">
+        {`DESCUBIERTOS POR ${selectedFriend.name.split(' ')[0].toUpperCase()}`}
+      </SectionLabel>
+      <SurfaceCard theme={theme}>
+        <Text style={[styles.hint, { color: p.subtext }]}>
+          Zonas que {selectedFriend.name} ya desbloqueó y aún no has explorado.
+        </Text>
+        <PlaceList places={selectedFriend.friendOnlyPlaces} dot={p.accent} text={p.subtext} border={p.hairline} bg={placeBg} />
+      </SurfaceCard>
+
+      {/* Conexiones */}
+      <SectionLabel theme={theme}>CONEXIONES</SectionLabel>
+      <ActionButton theme={theme} variant="primary" label="Sincronizar amigos de Facebook e Instagram" onPress={handleSyncSocial} />
+      <View style={styles.socialGrid}>
+        {SOCIAL_PROVIDERS.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={[styles.social, { borderColor: p.border }]}
+            onPress={() => handleSocialLogin(item.id)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Vincular ${item.label}`}
+          >
+            <View style={[styles.socialDot, { backgroundColor: item.dotColor }]} />
+            <Text style={[styles.socialText, { color: p.text }]}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-    </Modal>
+      {successMsg ? <Tag theme={theme} label={successMsg.toUpperCase()} color={p.positive} /> : null}
+    </ModalShell>
   );
 };
 
+const Bar: React.FC<{ label: string; value: string; percent: number; color: string; text: string; track: string }> = ({
+  label,
+  value,
+  percent,
+  color,
+  text,
+  track,
+}) => (
+  <View style={styles.bar}>
+    <View style={styles.rowBetween}>
+      <Text style={[styles.barLabel, { color: text }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.barValue, { color }]}>{value}</Text>
+    </View>
+    <View style={[styles.track, { backgroundColor: track }]}>
+      <View style={[styles.fill, { width: `${percent}%`, backgroundColor: color }]} />
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: colors.backdrop,
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    width: '100%',
-    maxHeight: '90%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderTopWidth: 1,
-    paddingHorizontal: space.xl,
-    paddingTop: space.lg,
-    paddingBottom: space.xl,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-  },
-  headerSubtitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginTop: 2,
-    letterSpacing: -0.2,
-  },
-  closeBtn: {
-    width: size.fab,
-    height: size.fab,
-    borderRadius: size.fab / 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  contactsSelectorWrapper: {
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  contactsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 6,
-  },
-  contactChip: {
+  contactsRow: { gap: space.sm, paddingVertical: space.xs },
+  contact: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 8,
-  },
-  chipAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  chipAvatarText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  chipOnlineBadge: {
-    position: 'absolute',
-    bottom: -1,
-    right: -1,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#10b981',
-    borderWidth: 1.5,
-    borderColor: '#0c101d',
-  },
-  chipInfo: {
-    justifyContent: 'center',
-  },
-  chipName: {
-    fontSize: 12,
-  },
-  chipRelation: {
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  scrollBody: {
-    maxHeight: 400,
-    marginTop: 8,
-  },
-  comparisonBox: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  comparisonHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  comparisonSectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  comparisonSubtitle: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statProgressRow: {
-    width: '100%',
-  },
-  statLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  statName: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statValue: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  barTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  placesSection: {
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  placesSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  placesSectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  matchBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  matchBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#10b981',
-  },
-  unlockedBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  unlockedBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#38bdf8',
-  },
-  placesSectionHint: {
-    fontSize: 11,
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  placesTagsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  placeTagCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 7,
-  },
-  placeDotShared: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10b981',
-  },
-  placeDotFriend: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#38bdf8',
-  },
-  placeTagText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  addContactContainer: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    height: 42,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 13,
-  },
-  addBtn: {
-    height: 42,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  successBanner: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  backToMapBtn: {
-    height: 48,
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
     borderRadius: radius.md,
-    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  avatar: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: fontSize.caption, fontWeight: fontWeight.bold, letterSpacing: 0.5 },
+  online: { position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
+  contactName: { fontSize: fontSize.small, fontWeight: fontWeight.bold, maxWidth: 110 },
+  contactRel: { fontSize: fontSize.caption, marginTop: 1 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  eyebrow: { fontSize: fontSize.caption, fontWeight: fontWeight.medium, letterSpacing: 1.5 },
+  bar: { gap: 6, marginTop: space.sm },
+  barLabel: { flex: 1, fontSize: fontSize.small, fontWeight: fontWeight.medium },
+  barValue: { fontSize: fontSize.small, fontWeight: fontWeight.bold, fontVariant: ['tabular-nums'] },
+  track: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 2 },
+  hint: { fontSize: fontSize.small, lineHeight: 17 },
+  placesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  place: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
+    gap: 7,
+    paddingHorizontal: space.md,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  backToMapBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
+  placeDot: { width: 5, height: 5, borderRadius: 3 },
+  placeText: { fontSize: fontSize.small, fontWeight: fontWeight.medium },
+  socialGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  social: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 44,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
   },
+  socialDot: { width: 7, height: 7, borderRadius: 4 },
+  socialText: { fontSize: fontSize.small, fontWeight: fontWeight.medium },
 });

@@ -20,8 +20,6 @@ export interface MapHUDProps {
   onRecenter: () => void;
   onOpenCouple?: () => void;
   isCoupleLinked?: boolean;
-  /** Herramientas secretas (Limpiar Mapa / Teletransporte): pulsación larga sobre la marca. */
-  onOpenDevTools?: () => void;
   onOpenProfile?: () => void;
   onToggleThemeMode?: () => void;
   onOpenThemeSelector?: () => void;
@@ -51,7 +49,6 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
   onRecenter,
   onOpenCouple,
   isCoupleLinked = false,
-  onOpenDevTools,
   onOpenProfile,
   onToggleThemeMode,
   onOpenThemeSelector,
@@ -74,10 +71,7 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
       {/* 1. BARRA SUPERIOR MINIMALISTA */}
       <View style={styles.topRow} pointerEvents="box-none">
         <View style={styles.brandGroup}>
-          <TouchableOpacity
-            activeOpacity={1}
-            delayLongPress={900}
-            onLongPress={onOpenDevTools}
+          <View
             style={[
               styles.brandCapsule,
               {
@@ -88,11 +82,19 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
           >
             <View style={[styles.brandDot, { backgroundColor: theme.accentColor }]} />
             <Text style={[styles.brandName, { color: theme.textColor }]}>TerraMaps</Text>
-          </TouchableOpacity>
+          </View>
 
           {streakDays > 0 && (
             <View style={styles.streakCapsule} accessibilityLabel={`Racha de ${streakDays} días`}>
-              <Text style={[styles.streakEmoji, !isTodayActive && { opacity: 0.5 }]}>🔥</Text>
+              <Text
+                style={[
+                  styles.streakEmoji,
+                  { color: isTodayActive ? colors.ember : theme.subtextColor },
+                  !isTodayActive && { opacity: 0.6 },
+                ]}
+              >
+                ◆
+              </Text>
               <Text
                 style={[
                   styles.streakText,

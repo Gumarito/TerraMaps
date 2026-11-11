@@ -266,6 +266,8 @@ export default function App() {
             partnerCoordinates={linkedPartner.coordinates}
             distanceText={partnerDistanceText}
             onPress={() => setCoupleModalVisible(true)}
+            insetTop={96}
+            insetBottom={170}
           />
         )}
 
@@ -284,7 +286,6 @@ export default function App() {
           onRecenter={recenter}
           onOpenCouple={() => setCoupleModalVisible(true)}
           isCoupleLinked={coupleState.status === 'linked'}
-          onOpenDevTools={() => setDevToolsVisible(true)}
           onOpenProfile={() => setProfileModalVisible(true)}
           onToggleThemeMode={handleToggleThemeMode}
           onOpenThemeSelector={() => setThemeSelectorVisible(true)}
@@ -316,6 +317,10 @@ export default function App() {
             onTogglePartnerRadar={togglePartnerRadar}
             isPartnerRadarActive={isPartnerRadarActive}
             onOpenProPaywall={() => openProPaywall()}
+            onOpenDevTools={() => {
+              setProfileModalVisible(false);
+              setDevToolsVisible(true);
+            }}
           />
         )}
 
@@ -374,7 +379,7 @@ export default function App() {
           />
         )}
 
-        {/* Herramientas secretas: Limpiar Mapa / Teletransporte (pulsación larga en la marca) */}
+        {/* Herramientas del explorador: Limpiar Mapa / Teletransporte (acceso desde el pie del Perfil) */}
         {devToolsVisible && (
           <DevToolsModal
             visible={devToolsVisible}
@@ -389,6 +394,7 @@ export default function App() {
         {themeSelectorVisible && (
           <ThemeSelectorModal
             visible={themeSelectorVisible}
+            theme={activeTheme}
             currentThemeId={activeThemeId}
             onSelectTheme={(themeId) => setCurrentThemeId(themeId)}
             onClose={() => setThemeSelectorVisible(false)}
