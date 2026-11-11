@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "TerraMaps",
+    "slug": "terramaps",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0f19"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.terramaps.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "TerraMaps necesita tu ubicación para despejar la niebla de guerra en tiempo real.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TerraMaps explora el mapa en segundo plano consumiendo mínima batería con acelerómetro.",
+        "NSMotionUsageDescription": "TerraMaps utiliza el sensor de movimiento para suspender el GPS cuando no caminas y ahorrar 95% de batería."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b0f19"
+      },
+      "package": "com.terramaps.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACTIVITY_RECOGNITION"
+      ]
+    },
+    "plugins": [
+      [
+        "@maplibre/maplibre-react-native"
+      ]
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "TerraMaps - Exploración Territorial",
+      "shortName": "TerraMaps",
+      "themeColor": "#0b0f19",
+      "backgroundColor": "#0b0f19",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "scope": "/",
+      "description": "App de Niebla de Guerra y Exploración Territorial Urbana basada en Uber H3",
+      "meta": {
+        "apple-mobile-web-app-capable": "yes",
+        "apple-mobile-web-app-status-bar-style": "black-translucent",
+        "apple-mobile-web-app-title": "TerraMaps",
+        "theme-color": "#0b0f19"
+      }
+    }
+  }
+}

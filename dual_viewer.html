@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TerraMaps & RetroCloud - Visor Dual</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090d16;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #f8fafc;
+    }
+    #topBar {
+      height: 48px;
+      background: rgba(15, 23, 42, 0.96);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      user-select: none;
+      z-index: 100;
+    }
+    .brandGroup {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brandBadge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .statusDot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      display: inline-block;
+    }
+    .controlsGroup {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .viewBtn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .viewBtn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .viewBtn.active {
+      background: #3b82f6;
+      border-color: #60a5fa;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+    #viewerContainer {
+      width: 100%;
+      height: calc(100% - 48px);
+      display: flex;
+      position: relative;
+    }
+    .frameWrapper {
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: #000;
+    }
+    #leftWrapper {
+      width: 50%;
+      min-width: 320px;
+    }
+    #rightWrapper {
+      width: 50%;
+      min-width: 320px;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    #splitter {
+      width: 6px;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.12);
+      cursor: col-resize;
+      position: relative;
+      z-index: 10;
+      transition: background 0.15s ease;
+    }
+    #splitter:hover, #splitter.dragging {
+      background: #3b82f6;
+      box-shadow: 0 0 10px #3b82f6;
+    }
+    #splitterHandle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 18px;
+      height: 36px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      pointer-events: none;
+    }
+    .handleDot {
+      width: 3px;
+      height: 14px;
+      background: #94a3b8;
+      border-radius: 1px;
+    }
+    .overlayGuard {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Control Superior -->
+  <div id="topBar">
+    <div class="brandGroup">
+      <div class="brandBadge">
+        <span class="statusDot"></span>
+        <span style="color: #00f5d4;">TerraMaps</span>
+        <span style="font-size: 11px; opacity: 0.6;">(8081)</span>
+      </div>
+      <div style="opacity: 0.3;">|</div>
+      <div class="brandBadge">
+        <span class="statusDot"></span>
+        <span style="color: #818cf8;">RetroCloud</span>
+        <span style="font-size: 11px; opacity: 0.6;">(3000)</span>
+      </div>
+    </div>
+
+    <div class="controlsGroup">
+      <button class="viewBtn active" id="btn5050" onclick="setLayout(50)">⚖️ 50 / 50</button>
+      <button class="viewBtn" id="btn7030" onclick="setLayout(70)">🗺️ TerraMaps 70%</button>
+      <button class="viewBtn" id="btn3070" onclick="setLayout(30)">🎮 RetroCloud 70%</button>
+      <button class="viewBtn" id="btnOnlyTerra" onclick="setLayout(100)">Solo TerraMaps</button>
+      <button class="viewBtn" id="btnOnlyRetro" onclick="setLayout(0)">Solo RetroCloud</button>
+      <div style="opacity: 0.3; margin: 0 4px;">|</div>
+      <button class="viewBtn" onclick="reloadFrames()" title="Recargar ambas aplicaciones">🔄</button>
+    </div>
+  </div>
+
+  <!-- Contenedor del Visor Dividido -->
+  <div id="viewerContainer">
+    <!-- Panel Izquierdo: TerraMaps -->
+    <div id="leftWrapper" class="frameWrapper">
+      <div class="overlayGuard" id="leftGuard"></div>
+      <iframe id="terraFrame" src="http://localhost:8081" title="TerraMaps Live"></iframe>
+    </div>
+
+    <!-- Divisor interactivo / Drag & Drop -->
+    <div id="splitter">
+      <div id="splitterHandle">
+        <div class="handleDot"></div>
+        <div class="handleDot"></div>
+      </div>
+    </div>
+
+    <!-- Panel Derecho: RetroCloud -->
+    <div id="rightWrapper" class="frameWrapper">
+      <div class="overlayGuard" id="rightGuard"></div>
+      <iframe id="retroFrame" src="http://localhost:3000" title="RetroCloud Games"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const leftWrapper = document.getElementById('leftWrapper');
+    const rightWrapper = document.getElementById('rightWrapper');
+    const splitter = document.getElementById('splitter');
+    const container = document.getElementById('viewerContainer');
+    const leftGuard = document.getElementById('leftGuard');
+    const rightGuard = document.getElementById('rightGuard');
+
+    let isDragging = false;
+
+    // Ajuste por presets
+    function setLayout(leftPct) {
+      document.querySelectorAll('.viewBtn').forEach(b => b.classList.remove('active'));
+
+      if (leftPct === 50) {
+        document.getElementById('btn5050').classList.add('active');
+        leftWrapper.style.display = 'block';
+        rightWrapper.style.display = 'block';
+        splitter.style.display = 'block';
+        leftWrapper.style.width = '50%';
+        rightWrapper.style.width = '50%';
+      } else if (leftPct === 70) {
+        document.getElementById('btn7030').classList.add('active');
+        leftWrapper.style.display = 'block';
+        rightWrapper.style.display = 'block';
+        splitter.style.display = 'block';
+        leftWrapper.style.width = '70%';
+        rightWrapper.style.width = '30%';
+      } else if (leftPct === 30) {
+        document.getElementById('btn3070').classList.add('active');
+        leftWrapper.style.display = 'block';
+        rightWrapper.style.display = 'block';
+        splitter.style.display = 'block';
+        leftWrapper.style.width = '30%';
+        rightWrapper.style.width = '70%';
+      } else if (leftPct === 100) {
+        document.getElementById('btnOnlyTerra').classList.add('active');
+        leftWrapper.style.display = 'block';
+        leftWrapper.style.width = '100%';
+        rightWrapper.style.display = 'none';
+        splitter.style.display = 'none';
+      } else if (leftPct === 0) {
+        document.getElementById('btnOnlyRetro').classList.add('active');
+        leftWrapper.style.display = 'none';
+        splitter.style.display = 'none';
+        rightWrapper.style.display = 'block';
+        rightWrapper.style.width = '100%';
+      }
+    }
+
+    // Recargar iframes
+    function reloadFrames() {
+      document.getElementById('terraFrame').src = 'http://localhost:8081';
+      document.getElementById('retroFrame').src = 'http://localhost:3000';
+    }
+
+    // Splitter interactivo con el mouse
+    splitter.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      splitter.classList.add('dragging');
+      leftGuard.style.display = 'block';
+      rightGuard.style.display = 'block';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const containerRect = container.getBoundingClientRect();
+      const offset = e.clientX - containerRect.left;
+      const totalWidth = containerRect.width;
+      const pct = Math.max(15, Math.min(85, (offset / totalWidth) * 100));
+
+      leftWrapper.style.width = `${pct}%`;
+      rightWrapper.style.width = `${100 - pct}%`;
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        splitter.classList.remove('dragging');
+        leftGuard.style.display = 'none';
+        rightGuard.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

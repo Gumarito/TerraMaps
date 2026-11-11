@@ -1,0 +1,26 @@
+{
+  "short_name": "TerraMaps",
+  "name": "TerraMaps - Exploración Territorial y Niebla de Guerra",
+  "description": "Explora tu ciudad en tiempo real, despeja la niebla de guerra territorial basada en hexágonos Uber H3 y conquista zonas.",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "categories": ["navigation", "sports", "games"]
+}

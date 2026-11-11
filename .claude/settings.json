@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc *)",
+      "Bash(node scripts/runTests.js)",
+      "Bash(npx expo config*)",
+      "Bash(npm install expo-task-manager*)",
+      "Bash(npx expo install expo-task-manager*)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Write(.env)",
+      "Write(.env.*)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Bash(*.env*)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(Remove-Item *)",
+      "Bash(del /f *)",
+      "Bash(rmdir /s *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git branch -D*)",
+      "Bash(claude *)",
+      "Bash(copilot *)",
+      "Bash(gemini *)"
+    ]
+  }
+}

@@ -1,0 +1,130 @@
+/**
+ * TerraMaps Battery Shield - Expo Hardware Adapters
+ * 
+ * Production-ready implementations of ILocationProvider and IStepSensorProvider
+ * wrapping 'expo-location' and 'expo-sensors' (Pedometer).
+ */
+
+import * as Location from 'expo-location';
+import { Pedometer } from 'expo-sensors';
+
+import type { GeoCoordinates } from '../geo/types';
+import type {
+  ILocationProvider,
+  IStepSensorProvider,
+  LocationUpdateCallback,
+  StepUpdateCallback,
+} from './types';
+
+/**
+ * Hardware step sensor adapter backed by Expo Pedometer.
+ */
+export class ExpoStepSensorProvider implements IStepSensorProvider {
+  private _subscription: { remove: () => void } | null = null;
+
+  public async isAvailable(): Promise<boolean> {
+    try {
+      return await Pedometer.isAvailableAsync();
+    } catch {
+      return false;
+    }
+  }
+
+  public async startStepCounter(callback: StepUpdateCallback): Promise<void> {
+    await this.stopStepCounter();
+    const isAvail = await this.isAvailable();
+    if (!isAvail) return;
+
+    this._subscription = Pedometer.watchStepCount((result) => {
+      if (typeof result.steps === 'number') {
+        callback(result.steps);
+      }
+    });
+  }
+
+  public async stopStepCounter(): Promise<void> {
+    if (this._subscription) {
+      this._subscription.remove();
+      this._subscription = null;
+    }
+  }
+}
+
+/**
+ * Hardware GPS location adapter backed by Expo Location.
+ */
+export class ExpoLocationProvider implements ILocationProvider {
+  private _locationSubscription: Location.LocationSubscription | null = null;
+
+  public async isAvailable(): Promise<boolean> {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const req = await Location.requestForegroundPermissionsAsync();
+        return req.status === 'granted';
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public async requestSingleAccurateFix(timeoutMs: number = 10000): Promise<GeoCoordinates> {
+    const isAvail = await this.isAvailable();
+    if (!isAvail) {
+      throw new Error('Location permissions not granted or sensor unavailable');
+    }
+
+    const pos = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+      timeInterval: timeoutMs,
+    });
+
+    return {
+      latitude: pos.coords.latitude,
+      longitude: pos.coords.longitude,
+      altitude: pos.coords.altitude,
+      accuracy: pos.coords.accuracy,
+      speed: pos.coords.speed,
+      heading: pos.coords.heading,
+      timestamp: pos.timestamp,
+    };
+  }
+
+  public async startDistanceTracking(
+    distanceIntervalMeters: number,
+    callback: LocationUpdateCallback
+  ): Promise<void> {
+    await this.stopTracking();
+
+    const isAvail = await this.isAvailable();
+    if (!isAvail) {
+      throw new Error('Location permissions not granted');
+    }
+
+    this._locationSubscription = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        distanceInterval: distanceIntervalMeters,
+      },
+      (loc) => {
+        callback({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          altitude: loc.coords.altitude,
+          accuracy: loc.coords.accuracy,
+          speed: loc.coords.speed,
+          heading: loc.coords.heading,
+          timestamp: loc.timestamp,
+        });
+      }
+    );
+  }
+
+  public async stopTracking(): Promise<void> {
+    if (this._locationSubscription) {
+      this._locationSubscription.remove();
+      this._locationSubscription = null;
+    }
+  }
+}

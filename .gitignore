@@ -1,0 +1,18 @@
+# Environment Variables (NO COMPARTIR EN GIT)
+.env
+.env*
+.env.local
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Expo & Metro
+.expo/
+dist/
+dist*/
+web-build/
+
+# Build artifacts
+dist-tests/
+*.log
