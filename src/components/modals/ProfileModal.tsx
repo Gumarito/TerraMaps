@@ -102,8 +102,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Estadísticas del explorador
   const currentStats: UserStats = userStats || storageService.getStats();
   const [isMuted, setIsMuted] = useState<boolean>(audioFeedback.getIsMuted());
-  const [socialAccount, setSocialAccount] = useState<{ provider: string; email: string } | null>(null);
-  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [explorationRadius, setExplorationRadius] = useState<number>(() => {
     try {
       const saved = storageService.getItem('@terramaps_exploration_radius');
@@ -139,8 +137,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     } catch {
       // No-op
     }
-    setSyncStatusMsg(`Radio de radar fijado en ${radius} metros.`);
-    setTimeout(() => setSyncStatusMsg(null), 3000);
   };
 
   const handleSaveWeight = (val: string) => {
@@ -172,26 +168,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       }
     } catch {
       setIsDeleteModalVisible(false);
-    }
-  };
-
-  const handleSocialLogin = async (provider: 'google' | 'microsoft' | 'facebook' | 'instagram') => {
-    const res = await authService.signInWithSocialProvider(provider);
-    if (res.success) {
-      setSocialAccount({
-        provider: provider === 'google' ? 'Google (Gmail)' : provider === 'microsoft' ? 'Microsoft (Hotmail)' : provider === 'facebook' ? 'Facebook' : 'Instagram',
-        email: `${res.profile.username}@${provider === 'google' ? 'gmail.com' : provider === 'microsoft' ? 'hotmail.com' : provider === 'facebook' ? 'facebook.com' : 'instagram.com'}`,
-      });
-      setSyncStatusMsg(`Cuenta vinculada con ${provider.toUpperCase()}`);
-      setTimeout(() => setSyncStatusMsg(null), 3500);
-    }
-  };
-
-  const handleSyncSocialFriends = async () => {
-    const res = await authService.syncSocialContacts('all');
-    if (res.success) {
-      setSyncStatusMsg(`${res.syncedCount} contactos de Facebook e Instagram vinculados a tu mapa.`);
-      setTimeout(() => setSyncStatusMsg(null), 4000);
     }
   };
 
@@ -406,118 +382,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </Text>
               </TouchableOpacity>
             )}
-
-            {/* Vinculación Social & Sincronización de Amigos */}
-            <View
-              style={{
-                backgroundColor: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
-                borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)',
-                borderWidth: 1,
-                borderRadius: 16,
-                padding: 16,
-                marginTop: 10,
-                marginBottom: 6,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: '800',
-                  letterSpacing: 0.8,
-                  color: isLight ? '#475569' : '#94a3b8',
-                  marginBottom: 4,
-                }}
-              >
-                AUTENTICACIÓN & CONTACTOS
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: isLight ? '#64748b' : '#cbd5e1',
-                  marginBottom: 10,
-                }}
-              >
-                {socialAccount
-                  ? `Conectado como ${socialAccount.email} (${socialAccount.provider})`
-                  : 'Inicia sesión para sincronizar tus viajes y conectar con amigos:'}
-              </Text>
-
-              {/* Botones Ejecutivos de Proveedores OAuth */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                {[
-                  { id: 'google', label: 'Google', dotColor: '#ea4335' },
-                  { id: 'microsoft', label: 'Microsoft', dotColor: '#0284c7' },
-                  { id: 'facebook', label: 'Facebook', dotColor: '#1877f2' },
-                  { id: 'instagram', label: 'Instagram', dotColor: '#e1306c' },
-                ].map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={{
-                      flex: 1,
-                      minWidth: '46%',
-                      paddingVertical: 9,
-                      paddingHorizontal: 12,
-                      borderRadius: 12,
-                      backgroundColor: isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.05)',
-                      borderWidth: 1,
-                      borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                    onPress={() => handleSocialLogin(item.id as any)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.dotColor }} />
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: isLight ? '#0f172a' : '#f8fafc' }}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Botón Sincronizar Amigos de Facebook e Instagram */}
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: isLight ? 'rgba(37, 99, 235, 0.06)' : 'rgba(255, 255, 255, 0.05)',
-                  borderColor: isLight ? '#2563eb' : 'rgba(255, 255, 255, 0.15)',
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  gap: 8,
-                }}
-                onPress={handleSyncSocialFriends}
-                activeOpacity={0.8}
-              >
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isLight ? '#2563eb' : '#38bdf8' }} />
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: '700',
-                    color: isLight ? '#2563eb' : '#38bdf8',
-                  }}
-                >
-                  Sincronizar contactos de Facebook e Instagram
-                </Text>
-              </TouchableOpacity>
-
-              {syncStatusMsg && (
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: '600',
-                    color: '#10b981',
-                    marginTop: 8,
-                    textAlign: 'center',
-                  }}
-                >
-                  {syncStatusMsg}
-                </Text>
-              )}
-            </View>
 
             {/* Selector de Skins Cosméticas (GTA, Minecraft, Cyberpunk, Obsidian) */}
             {onOpenThemes && (

@@ -70,6 +70,8 @@ export interface UseTerraTrackerReturn {
   simulateWalk: (mode?: TransportType) => void;
   cycleTransportMode: () => void;
   recenter: () => void;
+  teleportTo: (lng: number, lat: number) => void;
+  clearExploredMap: () => void;
   refreshAllHexagonsFromStorage: () => void;
   dismissTerritoryAlert: () => void;
   simulateKingAlert: () => void;
@@ -169,6 +171,12 @@ export function useTerraTracker(theme?: MapTheme): UseTerraTrackerReturn {
       }
     );
     return mapData.fogLayerGeoJSON as FeatureCollection<Geometry>;
+  });
+
+  // Distancia acumulada de hoy (arranca con lo ya registrado en la telemetría diaria)
+  const [liveDistanceMeters, setLiveDistanceMeters] = useState<number>(() => {
+    const today = analyticsDatabaseService.getTodayMobility();
+    return (today.walkKm + today.runKm + today.vehicleKm) * 1000;
   });
 
   const [selectedTransportMode, setSelectedTransportMode] = useState<TransportType>('walk');
@@ -539,6 +547,8 @@ export function useTerraTracker(theme?: MapTheme): UseTerraTrackerReturn {
     setCurrentHexId(currentHex);
     setBatteryState(BatteryShieldState.LEVEL_3_ACTIVE_ROUTE);
     setSpeedKmh(speedConfig.speedKmh);
+    // Contadores en vivo del HUD (km → pasos → kcal): mismo delta que la telemetría diaria.
+    setLiveDistanceMeters((d) => d + speedConfig.speedMps * 2.5);
   }, [refreshMapLayers, selectedTransportMode]);
 
   const cycleTransportMode = useCallback(() => {
@@ -564,6 +574,40 @@ export function useTerraTracker(theme?: MapTheme): UseTerraTrackerReturn {
     setRecenterTrigger((prev) => prev + 1);
   }, []);
 
+  // Teletransporte (herramienta secreta de desarrollo): salto directo sin pasar por el filtro anti-spike.
+  const teleportTo = useCallback((lng: number, lat: number) => {
+    if (!Number.isFinite(lng) || !Number.isFinite(lat) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+    const dest: [number, number] = [lng, lat];
+    lastCoordsRef.current = dest;
+    streetWalkingRouter.setPosition(dest);
+    gpsAccuracyFilter.reset({ latitude: lat, longitude: lng, accuracyMeters: 5, timestampMs: Date.now() });
+    setCoordinates(dest);
+    setCurrentHexId(coordinateToH3(lat, lng));
+    setRecenterTrigger((prev) => prev + 1);
+
+    const discovery = h3Engine.processLocation({ latitude: lat, longitude: lng }, 1);
+    if (discovery.isNewDiscovery) {
+      storageService.saveHexagons(discovery.newlyUnlockedHexes);
+      syncService.queueHexagonsForSync(discovery.newlyUnlockedHexes);
+      refreshMapLayers();
+    }
+  }, [refreshMapLayers]);
+
+  // Limpiar Mapa: borra todos los sectores explorados y la distancia acumulada; deja solo el punto actual.
+  const clearExploredMap = useCallback(() => {
+    storageService.removeHexagons(h3Engine.getUnlockedHexagons());
+    storageService.flushHexagonsToDisk();
+    h3Engine.clear();
+    setLiveDistanceMeters(0);
+    storageService.removeItem(`@terramaps_analytics_mobility_v1_${new Date().toISOString().split('T')[0]}`);
+    setRoutePathGeoJSON({ type: 'FeatureCollection', features: [] });
+    activeRouteCoordsRef.current = [];
+    const [lng, lat] = lastCoordsRef.current;
+    const seed = h3Engine.processLocation({ latitude: lat, longitude: lng }, 0);
+    if (seed.isNewDiscovery) storageService.saveHexagons(seed.newlyUnlockedHexes);
+    refreshMapLayers();
+  }, [refreshMapLayers]);
+
   const refreshAllHexagonsFromStorage = useCallback(() => {
     const persistedHexes = storageService.loadUnlockedHexagonsSync();
     h3Engine.importHexagons(persistedHexes);
@@ -583,8 +627,13 @@ export function useTerraTracker(theme?: MapTheme): UseTerraTrackerReturn {
 
   // Métricas Territoriales y de Salud (Calorías, % CDMX, % Cuauhtémoc, Distancia Diaria)
   const regionalStats = useMemo(() => {
-    return calculateRegionalMetrics(stats.totalAreaM2, routeDistanceMeters, routeElapsedSeconds);
-  }, [stats.totalAreaM2, routeDistanceMeters, routeElapsedSeconds]);
+    // Distancia viva: cada paso (simulador/GPS) suma; la ruta grabada nunca la reduce.
+    return calculateRegionalMetrics(
+      stats.totalAreaM2,
+      Math.max(liveDistanceMeters, routeDistanceMeters),
+      routeElapsedSeconds
+    );
+  }, [stats.totalAreaM2, liveDistanceMeters, routeDistanceMeters, routeElapsedSeconds]);
 
   // Monumentos y Puntos de Interés Regionales
   const landmarks = useMemo(() => {
@@ -642,6 +691,8 @@ export function useTerraTracker(theme?: MapTheme): UseTerraTrackerReturn {
     simulateWalk,
     cycleTransportMode,
     recenter,
+    teleportTo,
+    clearExploredMap,
     refreshAllHexagonsFromStorage,
     dismissTerritoryAlert,
     simulateKingAlert,

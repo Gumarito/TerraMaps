@@ -70,6 +70,26 @@ const EMPTY_SNAPSHOT: EntitlementSnapshot = {
   verifiedAt: null,
 };
 
+/**
+ * Acceso PRO ilimitado SOLO en desarrollo (`__DEV__`). Los builds de producción nunca lo activan:
+ * allí el estado sigue dependiendo exclusivamente de lo que confirma el servidor.
+ */
+export const DEV_UNLIMITED_PRO: boolean = __DEV__;
+
+const DEV_PRO_SNAPSHOT: EntitlementSnapshot = {
+  isPro: true,
+  proPlan: 'pro_annual',
+  proStatus: 'active',
+  proCurrentPeriodEnd: null,
+  cancelAtPeriodEnd: false,
+  timelineRestore: true,
+  hasBillingAccount: false,
+  canTransact: false,
+  isAnonymousAccount: true,
+  source: 'none',
+  verifiedAt: null,
+};
+
 function parseServerPayload(raw: unknown, userId: string): CachedEntitlements | null {
   if (!raw || typeof raw !== 'object') return null;
   const data = raw as Record<string, unknown>;
@@ -93,7 +113,7 @@ function parseServerPayload(raw: unknown, userId: string): CachedEntitlements | 
 
 class EntitlementService {
   private listeners = new Set<Listener>();
-  private snapshot: EntitlementSnapshot = EMPTY_SNAPSHOT;
+  private snapshot: EntitlementSnapshot = DEV_UNLIMITED_PRO ? DEV_PRO_SNAPSHOT : EMPTY_SNAPSHOT;
   private cached: CachedEntitlements | null = null;
   private sessionUserId: string | null = null;
   private inflight: Promise<EntitlementSnapshot> | null = null;
@@ -131,6 +151,7 @@ class EntitlementService {
   }
 
   public has(feature: PremiumFeature): boolean {
+    if (DEV_UNLIMITED_PRO) return true;
     if (feature === 'timeline_restore') return this.snapshot.timelineRestore;
     return this.snapshot.isPro && PRO_FEATURES.includes(feature);
   }
@@ -236,7 +257,8 @@ class EntitlementService {
     };
   }
 
-  private publish(next: EntitlementSnapshot): EntitlementSnapshot {
+  private publish(incoming: EntitlementSnapshot): EntitlementSnapshot {
+    const next = DEV_UNLIMITED_PRO ? { ...DEV_PRO_SNAPSHOT, canTransact: incoming.canTransact } : incoming;
     this.snapshot = next;
     for (const listener of this.listeners) {
       try {

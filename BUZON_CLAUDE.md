@@ -182,3 +182,29 @@ Máximo 2 rondas por fase, según las reglas. Antes de despachar cada tarea hay 
 - **Punto 10:** `accessControl.ts`: `getThemeLockReason` devuelve `null` si `__DEV__`, así modal y `App.tsx` (`resolveAccessibleThemeId`) coinciden. `ThemeSelectorModal.tsx`: ScrollView con `flexShrink`, `nestedScrollEnabled` y sin `maxHeight` fijo de 460.
 - **Verificación:** `npx tsc --noEmit` 0 errores; `node scripts/runTests.js` 74/74.
 - **Pendiente:** punto 4, componentes base de D1, capturas web antes/después.
+
+---
+
+## [2026-11-10] Informe /goal — Ingeniero de Interfaz y Diseño Principal
+
+**Verificación:** `npx tsc --noEmit` → 0 errores · `node scripts/runTests.js` → 74/74.
+
+| # | Estado | Cambio |
+|---|--------|--------|
+| 1 | OK | Barra superior: botones 42px (`size.hudIcon`), glifos 19px (`size.hudGlyph`) en `tokens.ts`/`MapHUD.tsx`. |
+| 2 | OK | Eliminado tab "Lugares", `LandmarksModal.tsx`, su export y su estado en `App.tsx`. (Se conservan los marcadores de monumentos del mapa y `regionalLandmarks`; no son navegación.) |
+| 3 | OK | Tab "Pareja" → `CoupleLinkModal` + `coupleLinkService` (PIN 6 dígitos, TTL 10 min, consentimiento explícito, desvincular, compartir batería, estado/batería/distancia). |
+| 4 | OK | Amigos: eliminado input "Conectar con @usuario…"; quedan botones directos Google/Microsoft/Facebook/Instagram + sincronizar contactos. |
+| 5 | OK | Perfil: eliminado el bloque "Autenticación & Contactos" y sus handlers/estado. |
+| 6 | OK | `DEV_UNLIMITED_PRO = __DEV__` en `entitlementService.ts`: snapshot `isPro/timelineRestore = true`, `has()` siempre true, skins sin bloqueo (`accessControl.ts`). **Solo en dev**: producción sigue dependiendo del servidor (no se hardcodeó PRO en release). |
+| 7 | OK (web) | `PartnerOffscreenRadar`: flecha + inicial + distancia en el borde cuando la pareja vinculada sale del viewport. `TerraMap.web` emite `onViewportChange`. |
+| 8 | OK | Pulsación larga (0.9 s) sobre la marca "TerraMaps" abre `DevToolsModal`: Limpiar Mapa (doble toque de confirmación) y Teletransporte (Torreón, CDMX, Monterrey, Guadalajara + lat/lng manual). Hook: `teleportTo`, `clearExploredMap`. |
+| 9 | OK | `regionalStats` usa `liveDistanceMeters` (suma por cada paso del simulador) → km, pasos y kcal se mueven en vivo, sin necesidad de grabar ruta. |
+| 10 | Parcial | Nuevos `ModalShell`/`SurfaceCard` con tokens; `FriendsModal` migrado a tokens (backdrop, radios, espaciado, cierre 42px). Resto de modales (Profile, Routes, Share…) aún con valores sueltos. |
+
+### Limitaciones honestas
+- **QR no implementado**: no hay librería QR en el proyecto; solo PIN.
+- **Vínculo de pareja es local**: la confirmación entre dos dispositivos reales requiere tabla de emparejamiento en Supabase (la API del servicio ya está preparada). Hoy enlaza con el integrante simulado `partner_1`.
+- **GPS real**: el contador en vivo se alimenta del simulador; no hay `watchPosition` continuo en el hook (solo lectura inicial).
+- El radar fuera de pantalla solo funciona en web; `TerraMap.native` no emite viewport ni dibuja socios.
+- El tab Pareja usa el glifo `∞`; la racha del HUD aún usa 🔥 (pendiente por invariante de estética).

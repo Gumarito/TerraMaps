@@ -52,5 +52,8 @@ export const size = {
   /** Botón circular flotante (FAB / iconos HUD). */
   fab: 42,
   fabIcon: 20,
-  hudIcon: 36,
+  /** Botones de la barra superior: objetivo táctil ergonómico de 42px. */
+  hudIcon: 42,
+  /** Glifo dentro de los botones de la barra superior. */
+  hudGlyph: 19,
 } as const;

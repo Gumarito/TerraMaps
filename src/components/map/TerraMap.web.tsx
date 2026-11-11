@@ -24,6 +24,13 @@ export interface TerraMapProps {
   partners?: TrackedPartner[];
   landmarks?: LandmarkDiscoveryStatus[];
   fogVisualMode?: FogVisualMode;
+  /** Se emite en cada movimiento de cámara con el viewport visible. */
+  onViewportChange?: (viewport: MapViewport) => void;
+}
+
+export interface MapViewport {
+  center: [number, number]; // [lng, lat]
+  bounds: [number, number, number, number]; // [oeste, sur, este, norte]
 }
 
 declare global {
@@ -49,7 +56,10 @@ const TerraMapComponent: React.FC<TerraMapProps> = ({
   partners,
   landmarks,
   fogVisualMode = 'translucent',
+  onViewportChange,
 }) => {
+  const onViewportChangeRef = useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const playerMarkerRef = useRef<any>(null);
@@ -273,6 +283,18 @@ const TerraMapComponent: React.FC<TerraMapProps> = ({
 
         map.on('zoom', updateZoomCulling);
         updateZoomCulling();
+
+        // Viewport en vivo para el radar de pareja fuera de pantalla
+        const emitViewport = () => {
+          const b = map.getBounds();
+          const c = map.getCenter();
+          onViewportChangeRef.current?.({
+            center: [c.lng, c.lat],
+            bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
+          });
+        };
+        map.on('move', emitViewport);
+        emitViewport();
 
         onMapLoaded?.();
       });

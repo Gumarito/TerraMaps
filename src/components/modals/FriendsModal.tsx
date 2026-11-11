@@ -6,10 +6,9 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  TextInput,
 } from 'react-native';
 import { MapTheme } from '@/core/theme/mapThemes';
-import { sanitizeUsername } from '@/core/security';
+import { colors, radius, size, space } from '@/theme/tokens';
 import { authService } from '@/services/authService';
 
 export interface FriendProfile {
@@ -32,7 +31,16 @@ interface FriendsModalProps {
   theme?: MapTheme;
 }
 
-const INITIAL_FRIENDS: FriendProfile[] = [
+type SocialProviderId = 'google' | 'microsoft' | 'facebook' | 'instagram';
+
+const SOCIAL_PROVIDERS: ReadonlyArray<{ id: SocialProviderId; label: string; dotColor: string }> = [
+  { id: 'google', label: 'Google', dotColor: '#ea4335' },
+  { id: 'microsoft', label: 'Microsoft', dotColor: '#0284c7' },
+  { id: 'facebook', label: 'Facebook', dotColor: '#1877f2' },
+  { id: 'instagram', label: 'Instagram', dotColor: '#e1306c' },
+];
+
+const INITIAL_FRIENDS:FriendProfile[] = [
   {
     id: 'f1',
     name: 'Sofía Morales',
@@ -91,33 +99,16 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
 
   const [friends, setFriends] = useState<FriendProfile[]>(INITIAL_FRIENDS);
   const [selectedFriendId, setSelectedFriendId] = useState<string>('f1');
-  const [newFriendInput, setNewFriendInput] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const selectedFriend = friends.find((f) => f.id === selectedFriendId) || friends[0];
 
-  const handleAddFriend = () => {
-    if (!newFriendInput.trim()) return;
-    const cleanName = sanitizeUsername(newFriendInput.replace('@', ''));
-    if (cleanName.length < 3) return;
-
-    const initials = cleanName.slice(0, 2).toUpperCase();
-    const newEntry: FriendProfile = {
-      id: `f_${Date.now()}`,
-      name: cleanName,
-      username: cleanName,
-      initials,
-      km2: 0.35,
-      relation: 'Contacto',
-      isOnline: true,
-      commonPlaces: ['Zócalo Capitalino'],
-      friendOnlyPlaces: ['Paseo de la Reforma'],
-    };
-    setFriends((prev) => [newEntry, ...prev]);
-    setSelectedFriendId(newEntry.id);
-    setNewFriendInput('');
-    setSuccessMsg(`@${cleanName} añadido a tu lista de exploración.`);
-    setTimeout(() => setSuccessMsg(null), 3000);
+  const handleSocialLogin = async (provider: SocialProviderId) => {
+    const res = await authService.signInWithSocialProvider(provider);
+    if (res.success) {
+      setSuccessMsg(`Cuenta vinculada con ${provider.toUpperCase()}.`);
+      setTimeout(() => setSuccessMsg(null), 3500);
+    }
   };
 
   const handleSyncSocial = async () => {
@@ -512,36 +503,33 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.15)',
-                      backgroundColor: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.04)',
-                      color: isLight ? '#0f172a' : '#ffffff',
-                    },
-                  ]}
-                  placeholder="Conectar con @usuario..."
-                  placeholderTextColor={isLight ? '#94a3b8' : '#64748b'}
-                  value={newFriendInput}
-                  onChangeText={setNewFriendInput}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity
-                  style={[styles.addBtn, { backgroundColor: effectiveAccent }]}
-                  onPress={handleAddFriend}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.addBtnText,
-                      { color: isLight ? '#ffffff' : '#0b0f19' },
-                    ]}
+              {/* Vinculación directa de redes sociales (única entrada de autenticación/contactos) */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {SOCIAL_PROVIDERS.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={{
+                      flex: 1,
+                      minWidth: '46%',
+                      minHeight: 44,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      backgroundColor: isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.05)',
+                      borderWidth: 1,
+                      borderColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                    onPress={() => handleSocialLogin(item.id)}
+                    activeOpacity={0.8}
                   >
-                    + Conectar
-                  </Text>
-                </TouchableOpacity>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.dotColor }} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isLight ? '#0f172a' : '#f8fafc' }}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
               {successMsg && (
@@ -576,18 +564,18 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    backgroundColor: colors.backdrop,
     justifyContent: 'flex-end',
   },
   modalCard: {
     width: '100%',
     maxHeight: '90%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
     borderTopWidth: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
+    paddingBottom: space.xl,
   },
   header: {
     flexDirection: 'row',
@@ -608,9 +596,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: size.fab,
+    height: size.fab,
+    borderRadius: size.fab / 2,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -827,7 +815,7 @@ const styles = StyleSheet.create({
   },
   backToMapBtn: {
     height: 48,
-    borderRadius: 14,
+    borderRadius: radius.md,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 14,

@@ -11,9 +11,13 @@ import {
   FriendsModal,
   RewardedAdModal,
   ThemeSelectorModal,
-  LandmarksModal,
+  CoupleLinkModal,
+  DevToolsModal,
   OnboardingModal,
 } from './src/components/modals';
+import { PartnerOffscreenRadar, type RadarViewport } from './src/components/ui/PartnerOffscreenRadar';
+import { coupleLinkService, type CoupleLinkState } from './src/services/coupleLinkService';
+import { haversineDistanceMeters } from './src/core/battery/batteryShield';
 import { ONBOARDING_STORAGE_KEY } from './src/components/modals/OnboardingModal';
 import { storageService } from './src/services/storage';
 import { TimelinePaywallModal } from './src/components/modals/TimelinePaywallModal';
@@ -66,7 +70,11 @@ export default function App() {
   const [friendsModalVisible, setFriendsModalVisible] = useState<boolean>(false);
   const [timelinePaywallVisible, setTimelinePaywallVisible] = useState<boolean>(false);
   const [themeSelectorVisible, setThemeSelectorVisible] = useState<boolean>(false);
-  const [landmarksModalVisible, setLandmarksModalVisible] = useState<boolean>(false);
+  const [coupleModalVisible, setCoupleModalVisible] = useState<boolean>(false);
+  const [devToolsVisible, setDevToolsVisible] = useState<boolean>(false);
+  const [viewport, setViewport] = useState<RadarViewport | null>(null);
+  const [coupleState, setCoupleState] = useState<CoupleLinkState>(() => coupleLinkService.getState());
+  useEffect(() => coupleLinkService.subscribe(setCoupleState), []);
   const [onboardingVisible, setOnboardingVisible] = useState<boolean>(() => {
     try {
       return storageService.getItem(ONBOARDING_STORAGE_KEY) !== 'true';
@@ -90,6 +98,8 @@ export default function App() {
     inspectRouteOnMap,
     recenter,
     recenterTrigger,
+    teleportTo,
+    clearExploredMap,
     regionalStats,
     partners,
     isPartnerRadarActive,
@@ -101,6 +111,18 @@ export default function App() {
     refreshAllHexagonsFromStorage,
     watchdogWarning,
   } = useTerraTracker(activeTheme);
+
+  // Pareja vinculada (solo con consentimiento mutuo confirmado) y su distancia al jugador.
+  const linkedPartner =
+    coupleState.status === 'linked' ? partners.find((p) => p.id === coupleState.partnerId) ?? null : null;
+  let partnerDistanceText: string | null = null;
+  if (linkedPartner) {
+    const meters = haversineDistanceMeters(
+      { latitude: coordinates[1], longitude: coordinates[0] },
+      { latitude: linkedPartner.coordinates[1], longitude: linkedPartner.coordinates[0] }
+    );
+    partnerDistanceText = meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
+  }
 
   // Modos de niebla prémium solo se renderizan con Terra PRO.
   const effectiveFogMode = resolveAccessibleFogMode(fogVisualMode);
@@ -201,6 +223,7 @@ export default function App() {
     setShareModalVisible(false);
     setTimelinePaywallVisible(false);
     setThemeSelectorVisible(false);
+    setCoupleModalVisible(false);
     setProPaywall({ visible: false, feature: null });
   }, []);
 
@@ -231,7 +254,20 @@ export default function App() {
           partners={partners}
           landmarks={landmarks}
           fogVisualMode={effectiveFogMode}
+          onViewportChange={setViewport}
         />
+
+        {/* Radar fuera de pantalla: flecha hacia la pareja cuando queda fuera del viewport */}
+        {linkedPartner && partnerDistanceText && (
+          <PartnerOffscreenRadar
+            theme={activeTheme}
+            viewport={viewport}
+            partnerName={linkedPartner.name}
+            partnerCoordinates={linkedPartner.coordinates}
+            distanceText={partnerDistanceText}
+            onPress={() => setCoupleModalVisible(true)}
+          />
+        )}
 
         {/* Head-Up Display (HUD) con Métricas Regionales, Calorías y Modos */}
         <MapHUD
@@ -246,7 +282,9 @@ export default function App() {
           fogVisualMode={effectiveFogMode}
           isPartnerRadarActive={isPartnerRadarActive}
           onRecenter={recenter}
-          onOpenLandmarks={() => setLandmarksModalVisible(true)}
+          onOpenCouple={() => setCoupleModalVisible(true)}
+          isCoupleLinked={coupleState.status === 'linked'}
+          onOpenDevTools={() => setDevToolsVisible(true)}
           onOpenProfile={() => setProfileModalVisible(true)}
           onToggleThemeMode={handleToggleThemeMode}
           onOpenThemeSelector={() => setThemeSelectorVisible(true)}
@@ -325,15 +363,25 @@ export default function App() {
           />
         )}
 
-        {/* Modal de Lugares & Monumentos Regionales */}
-        {landmarksModalVisible && (
-          <LandmarksModal
-            visible={landmarksModalVisible}
-            onClose={() => setLandmarksModalVisible(false)}
+        {/* Vínculo de Pareja (PIN + consentimiento mutuo, estado y batería) */}
+        {coupleModalVisible && (
+          <CoupleLinkModal
+            visible={coupleModalVisible}
+            onClose={() => setCoupleModalVisible(false)}
             theme={activeTheme}
-            landmarks={landmarks}
-            stats={stats}
-            regionalStats={regionalStats}
+            partner={linkedPartner}
+            distanceText={partnerDistanceText}
+          />
+        )}
+
+        {/* Herramientas secretas: Limpiar Mapa / Teletransporte (pulsación larga en la marca) */}
+        {devToolsVisible && (
+          <DevToolsModal
+            visible={devToolsVisible}
+            onClose={() => setDevToolsVisible(false)}
+            theme={activeTheme}
+            onClearMap={clearExploredMap}
+            onTeleport={teleportTo}
           />
         )}
 

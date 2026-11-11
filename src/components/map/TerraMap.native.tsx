@@ -25,6 +25,7 @@ export interface TerraMapProps {
   partners?: TrackedPartner[];
   landmarks?: LandmarkDiscoveryStatus[];
   fogVisualMode?: FogVisualMode;
+  onViewportChange?: (viewport: { center: [number, number]; bounds: [number, number, number, number] }) => void;
 }
 
 const TerraMapNativeComponent: React.FC<TerraMapProps> = ({

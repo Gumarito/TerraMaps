@@ -6,5 +6,6 @@ export { RoutesHistoryModal } from './RoutesHistoryModal';
 export { SocialShareModal } from './SocialShareModal';
 export { FriendsModal } from './FriendsModal';
 export { RewardedAdModal } from './RewardedAdModal';
-export { LandmarksModal } from './LandmarksModal';
+export { CoupleLinkModal } from './CoupleLinkModal';
+export { DevToolsModal } from './DevToolsModal';
 export { OnboardingModal } from './OnboardingModal';

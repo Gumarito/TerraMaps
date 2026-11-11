@@ -18,7 +18,10 @@ export interface MapHUDProps {
   fogVisualMode?: FogVisualMode;
   isPartnerRadarActive?: boolean;
   onRecenter: () => void;
-  onOpenLandmarks?: () => void;
+  onOpenCouple?: () => void;
+  isCoupleLinked?: boolean;
+  /** Herramientas secretas (Limpiar Mapa / Teletransporte): pulsación larga sobre la marca. */
+  onOpenDevTools?: () => void;
   onOpenProfile?: () => void;
   onToggleThemeMode?: () => void;
   onOpenThemeSelector?: () => void;
@@ -46,7 +49,9 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
   fogVisualMode = 'translucent',
   isPartnerRadarActive = true,
   onRecenter,
-  onOpenLandmarks,
+  onOpenCouple,
+  isCoupleLinked = false,
+  onOpenDevTools,
   onOpenProfile,
   onToggleThemeMode,
   onOpenThemeSelector,
@@ -69,7 +74,10 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
       {/* 1. BARRA SUPERIOR MINIMALISTA */}
       <View style={styles.topRow} pointerEvents="box-none">
         <View style={styles.brandGroup}>
-          <View
+          <TouchableOpacity
+            activeOpacity={1}
+            delayLongPress={900}
+            onLongPress={onOpenDevTools}
             style={[
               styles.brandCapsule,
               {
@@ -80,7 +88,7 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
           >
             <View style={[styles.brandDot, { backgroundColor: theme.accentColor }]} />
             <Text style={[styles.brandName, { color: theme.textColor }]}>TerraMaps</Text>
-          </View>
+          </TouchableOpacity>
 
           {streakDays > 0 && (
             <View style={styles.streakCapsule} accessibilityLabel={`Racha de ${streakDays} días`}>
@@ -219,15 +227,16 @@ const MapHUDComponent: React.FC<MapHUDProps> = ({
           },
         ]}
       >
-        {/* Tab 1: Lugares & Monumentos */}
+        {/* Tab 1: Vínculo de Pareja (consentimiento mutuo) */}
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={onOpenLandmarks}
+          onPress={onOpenCouple}
           activeOpacity={0.7}
+          accessibilityLabel="Vínculo de pareja"
         >
-          <Text style={[styles.tabIcon, { color: theme.subtextColor }]}>⚑</Text>
-          <Text style={[styles.tabLabel, { color: theme.subtextColor }]}>
-            Lugares
+          <Text style={[styles.tabIcon, { color: isCoupleLinked ? theme.accentColor : theme.subtextColor }]}>∞</Text>
+          <Text style={[styles.tabLabel, { color: isCoupleLinked ? theme.accentColor : theme.subtextColor }]}>
+            Pareja
           </Text>
         </TouchableOpacity>
 
@@ -322,9 +331,9 @@ const styles = StyleSheet.create({
   brandCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    minHeight: size.hudIcon,
+    borderRadius: size.hudIcon / 2,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -359,9 +368,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: size.hudIcon,
+    height: size.hudIcon,
+    borderRadius: size.hudIcon / 2,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -371,8 +380,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   iconBtnSymbol: {
-    fontSize: 16,
+    width: size.hudIcon,
+    fontSize: size.hudGlyph,
+    lineHeight: size.hudIcon - 2, // centra el glifo (borde de 1px)
     fontWeight: '800',
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   watchdogAlertPill: {
     alignSelf: 'center',
